@@ -12,10 +12,12 @@ Raw files live in `scoring/data/raw/real/` (gitignored). Collected 2026-10-25 un
 | Kaggle `ryanheger/pokemon-card-sold-price-reference` | Raw / PSA 9 / PSA 10 reference prices and sample counts for 508 Pokemon cards | Kaggle API token, CC BY 4.0 | Attribution required. Used to sanity-check per-grade prices. |
 | Kaggle `zeynepcahan/pokemon-pricecharting` | Monthly used vs graded price per card, 2021 on | Kaggle API token, Apache 2.0 (as stated by uploader) | Underlying data appears to come from PriceCharting, a paid service. Provenance is unclear: keep as context only, do not ship. |
 
+| Helius free plan (Enhanced Transactions + DAS) | Collector Crypt marketplace sales (crawled via the marketplace fee wallet `8373hLiA...`), gacha buybacks (crawled via buyback wallet `GachaNgy...`), asset metadata | Free key, 1M credits per month, about 100 credits per enhanced call | Two Collector Crypt collections found through DAS: legacy `CCryptWBYk...` and Metaplex Core `CCryptUfeFS...` (most recent cards). Both addresses came from on-chain DAS grouping, not yet matched to Collector Crypt's own site. Asset metadata includes CC's own `Insured Value`, GemRate ids and PSA pop-report spec ids. |
+
 ## Not used (paid or blocked)
 PriceCharting, CardHedger, Card Ladder, PSA SMR, 130point paid, eBay scraping.
 
 ## Pending
-- Helius (Collector Crypt buybacks, pack pulls, non-ME sales): needs account.
-- PSA public API: the user must accept PSA's End User Agreement. It forbids publishing compiled PSA data and forbids offering it inside a software subscription product, so population data may only be used internally for the demo.
+- PSA public API: agreement accepted and token generated, but every call returns HTTP 403 "Access to this API is limited to approved customers". Needs PSA approval (collectors-apis@collectors.com). The agreement also forbids publishing compiled PSA data or using it inside a software subscription product.
+- Pack pulls (gacha purchases) are not collected yet.
 - Dune, Etherscan (Polygonscan), Pokemon TCG API: accounts not finished.
