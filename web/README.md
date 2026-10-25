@@ -75,3 +75,33 @@ Show a skeleton while the score loads. Show a clear message when a token is not 
 ## Stretch
 
 Email or Google sign-in through an embedded wallet service, a lender "auto-offer" that proposes terms from the score, a portfolio view that scores a whole collection together, and push or email reminders.
+
+## Current state
+
+Scaffolded with Next.js 15 (App Router), TypeScript and Tailwind.
+
+**Sign in / sign up.** Two ways in, both through NextAuth (`src/lib/auth.ts`):
+
+- **Solana wallet.** Wallet Adapter with the standard modal. Phantom, Solflare, Backpack and any other Wallet Standard
+  wallet show up automatically. The user signs a plain-text message (no transaction) whose nonce is NextAuth's CSRF
+  token. The server checks the ed25519 signature, the domain and that the message is under 10 minutes old. The
+  session's `walletAddress` is the account, as the principles above require.
+- **Google.** NextAuth's Google OAuth provider, pulled forward from the stretch list. A Google session has no wallet
+  yet, so linking a wallet to a Google account (or an embedded wallet) is the next step for that path.
+
+There's no database yet, so sign up is simply the first sign in and sessions are JWTs. `/me` requires a session.
+
+**Scores.** `src/lib/scoring.ts` has the `CardScore` type from Interface 1 and calls
+`GET {NEXT_PUBLIC_SCORING_API_URL}/score/{token_mint}`. With that variable empty it returns local mock scores, so the
+UI runs before the score service does. `/me` shows three demo cards until `GET /api/cards?owner={wallet}` exists.
+
+### Run locally
+
+```bash
+cd web
+cp .env.example .env.local   # set NEXTAUTH_SECRET and the Google OAuth keys
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+For Google, add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI in Google Cloud Console.
