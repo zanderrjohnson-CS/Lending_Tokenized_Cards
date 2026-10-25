@@ -1,0 +1,42 @@
+# Secrets and keys
+.env
+.env.*
+!.env.example
+*.keypair.json
+keypairs/
+devnet/keys/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Rust / Anchor
+target/
+.anchor/
+test-ledger/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data and models (keep small samples only)
+scoring/data/raw/
+scoring/data/cleaned/
+scoring/models/*.pkl
+scoring/models/*.joblib
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+
+# OS and editor
+.DS_Store
+.idea/
+.vscode/

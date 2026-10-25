@@ -1,0 +1,30 @@
+{
+  "_note": "Copy to addresses.json and fill in, then commit it. Devnet public keys are not secrets. Never commit private keys. Workstream E publishes the real values; every other workstream reads them from here.",
+  "network": "devnet",
+  "program_id": "REPLACE_WITH_LOAN_PROGRAM_ID",
+  "usdc_mint": "REPLACE_WITH_TEST_USDC_MINT",
+  "usdc_decimals": 6,
+  "collection_key": "REPLACE_WITH_DEMO_COLLECTION_KEY",
+  "treasury": "REPLACE_WITH_TREASURY_ADDRESS",
+  "buyback_account": "REPLACE_WITH_MOCK_BUYBACK_ACCOUNT",
+  "wallets": {
+    "collector_1": "REPLACE_PUBLIC_KEY",
+    "collector_2": "REPLACE_PUBLIC_KEY",
+    "lender_1": "REPLACE_PUBLIC_KEY",
+    "lender_2": "REPLACE_PUBLIC_KEY"
+  },
+  "cards": [
+    {
+      "token_mint": "REPLACE_WITH_CARD_MINT",
+      "card_id": "base1-4-holo-en",
+      "tier": "blue_chip",
+      "verified": true
+    }
+  ],
+  "fake_lookalikes": [
+    {
+      "token_mint": "REPLACE_WITH_FAKE_MINT",
+      "note": "Outside the official collection. Must be rejected as unverified."
+    }
+  ]
+}
