@@ -49,7 +49,7 @@ def get_logs(flt, lo, hi, depth=0):
     return get_logs(flt, lo, mid, depth + 1) + get_logs(flt, mid + 1, hi, depth + 1)
 
 
-def logs(days=7, throttle=0.3, only=None):
+def logs(days=7, throttle=0.3, only=None, reverse=False):
     head = int(rpc("eth_blockNumber", []), 16) - 100       # stay clear of reorgs
     start = head - int(days * 86400 / 2.1)                   # ~2.1s Polygon blocks
     start -= start % CHUNK
@@ -59,7 +59,7 @@ def logs(days=7, throttle=0.3, only=None):
             continue
         d = OUT / kind
         d.mkdir(parents=True, exist_ok=True)
-        for lo in range(start, head, CHUNK):
+        for lo in (reversed(range(start, head, CHUNK)) if reverse else range(start, head, CHUNK)):
             f = d / f"blocks_{lo}.json.gz"
             if f.exists():
                 continue
@@ -142,10 +142,11 @@ if __name__ == "__main__":
     ap.add_argument("cmd", choices=["logs", "tokens", "sales", "block_times"])
     ap.add_argument("--days", type=float, default=7)
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--reverse", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--only", choices=["nft", "pay"])
     a = ap.parse_args()
-    if a.cmd == "logs": logs(a.days, only=a.only)
+    if a.cmd == "logs": logs(a.days, only=a.only, reverse=a.reverse)
     elif a.cmd == "block_times": block_times()
     elif a.cmd == "tokens": tokens(a.limit, loop=a.loop)
     else: print(len(sales()))
