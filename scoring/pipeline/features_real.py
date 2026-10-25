@@ -34,6 +34,12 @@ def main():
     for r in rows:
         series[(r["card_key"], r["grade_company"], r["g"])].append(r)
 
+    bbs = collections.defaultdict(list)   # platform buyback prices per series (recovery-floor signal)
+    bbp = D / "buybacks.csv"
+    if bbp.exists():
+        for r in csv.DictReader(open(bbp)):
+            if float(r["price_usd"]) > 0:
+                bbs[(r["card_key"], r["grade_company"], float(r["grade"]))].append((r["sale_ts"], float(r["price_usd"])))
     out = []
     for (ck, gc, g), rs in series.items():
         rs.sort(key=lambda r: r["ts"])
@@ -64,7 +70,15 @@ def main():
         mad = st.median([abs(p - med) for p in P])
         last = rs[-1]
         gaps = [(b["ts"] - a["ts"]).total_seconds() / 86400 for a, b in zip(rs, rs[1:])]
+        bb = bbs.get((ck, gc, g), [])
+        bb30 = [p for t, p in bb if (asof - dt.datetime.fromisoformat(t)).days <= 30]
+        ins = [float(r["insured_value_usd"]) for r in rs if r.get("insured_value_usd") not in ("", None)]
         out.append(dict(
+            n_buybacks=len(bb), buyback_median=round(st.median([p for _, p in bb]), 2) if bb else "",
+            buyback_median_30d=round(st.median(bb30), 2) if bb30 else "",
+            buyback_to_market_ratio=round(st.median([p for _, p in bb]) / med, 3) if bb else "",
+            insured_value_median=round(st.median(ins), 2) if ins else "",
+            insured_to_market_ratio=round(st.median(ins) / med, 3) if ins else "",
             card_key=ck, card_name=rs[0]["card_name"], set_name=rs[0]["set_name"], year=rs[0]["year"],
             card_number=rs[0]["card_number"], language=rs[0]["language"], category=rs[0]["category"],
             grade_company=gc, grade=g, n_sales=len(rs), n_tokens=len(by_tok), n_sales_7d=n7, n_sales_30d=n30, n_sales_90d=n90,
