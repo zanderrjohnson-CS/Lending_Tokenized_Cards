@@ -4,7 +4,10 @@ Free. Without a key: 1,000 requests/day, 30/min. With a free key (dev.pokemontcg
 Prices are a daily snapshot (low/mid/high/market listings on TCGplayer, avg1/7/30 + trend on
 Cardmarket), not a sale history, so run this daily (cron) to build your own time series.
 
-Usage: POKEMONTCG_API_KEY=... python src/fetch_pokemontcg.py
+In the Claude cloud environment the key is a network secret and the proxy adds the X-Api-Key
+header. Elsewhere, set POKEMONTCG_API_KEY (optional).
+
+Usage: python src/fetch_pokemontcg.py
 Appends to data/raw/pokemontcg_snapshot.csv (one row per card per day).
 """
 import csv

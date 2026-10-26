@@ -72,10 +72,10 @@ What this already shows:
 
 ```bash
 python src/compute_factors.py                      # score the sample (no network)
-POKEMONTCG_API_KEY=... python src/fetch_pokemontcg.py   # daily snapshot
+python src/fetch_pokemontcg.py                     # daily snapshot (key optional; injected in the cloud env)
 python src/fetch_tcgcsv.py                         # daily TCGplayer prices
 PRICECHARTING_TOKEN=... python src/fetch_pricecharting.py api
 EBAY_CLIENT_ID=... EBAY_CLIENT_SECRET=... python src/fetch_ebay.py
-PSA_TOKEN=... python src/fetch_psa.py cert 12345678
+python src/fetch_psa.py cert 12345678              # PSA_TOKEN=... outside the cloud env
 ```
 Python 3.9+, no third-party packages. Run fetchers from the repo root.
