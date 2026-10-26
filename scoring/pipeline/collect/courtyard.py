@@ -78,8 +78,15 @@ def block_times():
     pts = set(los) | {l + CHUNK for l in los}
     for b in sorted(pts):
         if str(b) in bt: continue
-        blk = rpc("eth_getBlockByNumber", [hex(b), False])
-        if blk: bt[str(b)] = int(blk["timestamp"], 16)
+        blk = None
+        for url in (RPC, "https://1rpc.io/matic", "https://polygon-bor-rpc.publicnode.com"):
+            try:
+                r = get_json(url, data={"jsonrpc": "2.0", "id": 1, "method": "eth_getBlockByNumber", "params": [hex(b), False]}, retries=2, base_delay=1)
+                blk = r.get("result")
+                if blk: break
+            except Exception:
+                continue
+        if blk: bt[str(b)] = int(blk["timestamp"], 16); f.write_text(json.dumps(bt))
     f.write_text(json.dumps(bt))
     print(len(bt), "anchors")
 
