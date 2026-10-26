@@ -1,0 +1,11 @@
+card_key,name,set,number,era,ptcg_id,pricecharting_path
+base-charizard,Charizard,Base Set (Unlimited),4/102,vintage,base1-4,pokemon-base-set/charizard-4
+base-blastoise,Blastoise,Base Set (Unlimited),2/102,vintage,base1-2,pokemon-base-set/blastoise-2
+base-venusaur,Venusaur,Base Set (Unlimited),15/102,vintage,base1-15,pokemon-base-set/venusaur-15
+umbreon-vmax-alt,Umbreon VMAX (Alt Art),Evolving Skies,215/203,modern,swsh7-215,pokemon-evolving-skies/umbreon-vmax-215
+gengar-vmax-alt,Gengar VMAX (Alt Art),Fusion Strike,271/264,modern,swsh8-271,pokemon-fusion-strike/gengar-vmax-271
+giratina-v-alt,Giratina V (Alt Art),Lost Origin,186/196,modern,swsh11-186,pokemon-lost-origin/giratina-v-186
+lugia-v-alt,Lugia V (Alt Art),Silver Tempest,186/195,modern,swsh12-186,pokemon-silver-tempest/lugia-v-186
+charizard-ex-151-sir,Charizard ex (SIR),Scarlet & Violet 151,199/165,modern,sv3pt5-199,pokemon-scarlet-&-violet-151/charizard-ex-199
+charizard-ex-obf-sir,Charizard ex (SIR),Obsidian Flames,223/197,modern,sv3-223,pokemon-obsidian-flames/charizard-ex-223
+pikachu-grey-felt-hat,Pikachu with Grey Felt Hat,SV Black Star Promo,SVP 085,modern,svp-85,pokemon-promo/pikachu-with-grey-felt-hat-085
