@@ -177,9 +177,9 @@ def courtyard():
         b = s["block"]
         if not keys:
             continue
-        i = bisect.bisect_right(keys, b) - 1
-        if i < 0 or i + 1 >= len(keys):
-            i = max(0, min(i, len(keys) - 2))
+        if b < keys[0] or b > keys[-1]:
+            continue   # no block-time anchor on both sides: skip rather than extrapolate a timestamp
+        i = min(bisect.bisect_right(keys, b) - 1, len(keys) - 2)
         b0, b1 = keys[i], keys[i + 1]
         ts0, ts1 = bt[str(b0)], bt[str(b1)]
         ts = dt.datetime.fromtimestamp(ts0 + (ts1 - ts0) * (b - b0) / (b1 - b0), dt.UTC)
