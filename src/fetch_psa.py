@@ -12,7 +12,8 @@ Two uses for the score:
 
 Usage:
   python src/fetch_psa.py cert 12345678
-  python src/fetch_psa.py pop <specID>   (prefix with PSA_TOKEN=... outside the cloud environment)   # specID comes back in a cert lookup
+  python src/fetch_psa.py pop <specID>   # specID comes back in a cert lookup
+Outside the cloud environment, prefix these with PSA_TOKEN=...
 Endpoint paths follow PSA's public API docs; we could not call them from our sandbox, so
 confirm them against the docs page on first run.
 """
