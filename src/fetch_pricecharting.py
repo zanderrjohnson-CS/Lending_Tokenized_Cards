@@ -7,9 +7,8 @@ Two modes:
   page  Reads the public card page, which lists the ~30 most recent eBay and ~30 most recent
         TCGplayer ungraded sales plus per-grade tables. Their terms restrict automated
         scraping, so treat this as a low-volume demo path only (one request every few seconds,
-        a handful of cards) and switch to the API for anything real. The HTML selectors below
-        were written without being able to load the page from our sandbox, so check them on
-        first run.
+        a handful of cards) and switch to the API for anything real. Selectors checked against
+        the live pages on 2026-10-26.
 
 Usage:
   PRICECHARTING_TOKEN=... python src/fetch_pricecharting.py api
@@ -95,12 +94,16 @@ def via_page(card):
         price = float(re.sub(r"[^\d.]", "", r["price"]) or 0)
         venue = "TCGplayer" if "TCGPlayer" in r.get("title", "") or r["id"].startswith("tcg") else "eBay"
         lines.append(f"SALE|{r['date']}|{price:.2f}|{venue}")
-    # Per-grade summary: the price table near the top has ids like used_price, graded_price ...
-    for field, grade in (("used_price", "Ungraded"), ("complete_price", "Grade 7"), ("new_price", "Grade 8"),
-                         ("graded_price", "Grade 9"), ("box_only_price", "Grade 9.5"), ("manual_only_price", "PSA 10")):
+    # Per-grade summary: the price table near the top has ids like used_price, graded_price ...,
+    # and the row under it has the sales volume per grade, keyed by its completed-sales tab.
+    for field, tab, grade in (("used_price", "used", "Ungraded"), ("complete_price", "cib", "Grade 7"),
+                              ("new_price", "new", "Grade 8"), ("graded_price", "graded", "Grade 9"),
+                              ("box_only_price", "box-only", "Grade 9.5"), ("manual_only_price", "manual-only", "PSA 10")):
         m = re.search(rf'id="{field}".*?\$([\d,]+\.\d\d)', html, re.S)
+        v = re.search(rf'data-show-tab="completed-auctions-{tab}">.*?<a href="#">([^<]+)</a>', html, re.S)
         if m:
-            lines.insert(0, f"GRADE|{grade}|{m.group(1).replace(',', '')}|0 sales per year")
+            vol = v.group(1).strip() if v else "0 sales per year"
+            lines.insert(0, f"GRADE|{grade}|{m.group(1).replace(',', '')}|{vol}")
     if not p.rows:
         print(f"  warning: no sale rows parsed for {card['card_key']}; selectors probably need updating")
     return lines

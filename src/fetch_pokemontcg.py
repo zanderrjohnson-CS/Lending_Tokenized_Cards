@@ -28,27 +28,45 @@ def main():
     with open(os.path.join(ROOT, "data", "cards.csv")) as f:
         cards = list(csv.DictReader(f))
     out = os.path.join(ROOT, "data", "raw", "pokemontcg_snapshot.csv")
-    new = not os.path.exists(out)
-    with open(out, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
-        if new:
-            w.writeheader()
-        for c in cards:
+    today = date.today().isoformat()
+    # Re-running on the same day replaces that day's row for each card that succeeds, and keeps
+    # the earlier row for a card that fails this time.
+    kept = []
+    if os.path.exists(out):
+        with open(out) as f:
+            kept = list(csv.DictReader(f))
+    retry = {r["ptcg_id"] for r in kept if r["snapshot_date"] == today}
+    failed = []
+    rows = {}
+    for c in cards:
+        try:
             d = get(f"https://api.pokemontcg.io/v2/cards/{c['ptcg_id']}", headers, delay=2.1)["data"]
-            tp, cm = d.get("tcgplayer", {}), d.get("cardmarket", {}).get("prices", {})
-            # Pick the variant with the highest market price (holofoil for most chase cards).
-            variants = tp.get("prices", {})
-            vname, v = max(variants.items(), key=lambda kv: kv[1].get("market") or 0) if variants else ("", {})
-            w.writerow({
-                "snapshot_date": date.today().isoformat(), "ptcg_id": d["id"], "name": d["name"],
-                "set": d["set"]["name"], "release_date": d["set"]["releaseDate"].replace("/", "-"),
-                "rarity": d.get("rarity"), "tcgplayer_variant": vname,
-                "tcg_low": v.get("low"), "tcg_mid": v.get("mid"), "tcg_high": v.get("high"),
-                "tcg_market": v.get("market"), "tcg_updated": tp.get("updatedAt"),
-                "cm_avg1": cm.get("avg1"), "cm_avg7": cm.get("avg7"), "cm_avg30": cm.get("avg30"),
-                "cm_trend": cm.get("trendPrice"), "cm_low": cm.get("lowPrice"), "cm_avg_sell": cm.get("averageSellPrice"),
-            })
-            print("ok", d["id"], vname, v.get("market"))
+        except Exception as e:  # the API is flaky (500/502s); keep going and report at the end
+            print("FAILED", c["ptcg_id"], e)
+            if c["ptcg_id"] not in retry:
+                failed.append(c["ptcg_id"])
+            continue
+        tp, cm = d.get("tcgplayer", {}), d.get("cardmarket", {}).get("prices", {})
+        # Pick the variant with the highest market price (holofoil for most chase cards).
+        variants = tp.get("prices", {})
+        vname, v = max(variants.items(), key=lambda kv: kv[1].get("market") or 0) if variants else ("", {})
+        rows[d["id"]] = {
+            "snapshot_date": today, "ptcg_id": d["id"], "name": d["name"],
+            "set": d["set"]["name"], "release_date": d["set"]["releaseDate"].replace("/", "-"),
+            "rarity": d.get("rarity"), "tcgplayer_variant": vname,
+            "tcg_low": v.get("low"), "tcg_mid": v.get("mid"), "tcg_high": v.get("high"),
+            "tcg_market": v.get("market"), "tcg_updated": (tp.get("updatedAt") or "").replace("/", "-"),
+            "cm_avg1": cm.get("avg1"), "cm_avg7": cm.get("avg7"), "cm_avg30": cm.get("avg30"),
+            "cm_trend": cm.get("trendPrice"), "cm_low": cm.get("lowPrice"), "cm_avg_sell": cm.get("averageSellPrice"),
+        }
+        print("ok", d["id"], vname, v.get("market"))
+    with open(out, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(r for r in kept if not (r["snapshot_date"] == today and r["ptcg_id"] in rows))
+        w.writerows(rows.values())
+    if failed:
+        print("failed (re-run later):", " ".join(failed))
 
 
 if __name__ == "__main__":

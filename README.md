@@ -1,7 +1,7 @@
 # Card safety score: data sources, scripts, and a first sample
 
 Starter data pipeline for the lending "safety score" (Liquidity, Volatility, Spread, Authenticity,
-Concentration, Trend). Ten popular cards, real prices and sold listings pulled on 2026-10-26,
+Concentration, Trend). Ten popular cards, real prices and sold listings pulled live by the fetch scripts on 2026-10-26,
 and a script that turns them into factor scores and a 0-100 composite.
 
 ## What's here
@@ -9,8 +9,9 @@ and a script that turns them into factor scores and a 0-100 composite.
 | Path | What it is |
 |---|---|
 | `data/cards.csv` | Starter set: 10 cards (3 vintage Base Set holos, 7 modern chase cards) with pokemontcg.io ids and PriceCharting paths |
-| `data/raw/pricecharting_2026-10-26.txt` | Per-grade price + sales volume, and ~60 ungraded sold listings per card (eBay + TCGplayer), 585 sales total |
-| `data/raw/pokemontcg_snapshot.csv` | TCGplayer low/mid/high/market and Cardmarket avg1/7/30/trend for 5 of the 10 cards |
+| `data/raw/pricecharting_2026-10-26.txt` | Per-grade price + sales volume, and ~60 ungraded sold listings per card (eBay + TCGplayer), 588 sales total, from `fetch_pricecharting.py page` |
+| `data/raw/pokemontcg_snapshot.csv` | TCGplayer low/mid/high/market and Cardmarket avg1/7/30/trend for all 10 cards, one row per card per day |
+| `data/raw/tcgcsv_prices.csv` | TCGplayer low/mid/high/market/direct-low per card per day from tcgcsv.com (starts 2026-10-26) |
 | `src/compute_factors.py` | Computes all six factors and the composite. Standard library only. `python src/compute_factors.py` |
 | `src/fetch_*.py` | One fetcher per source (below), to run on a normal laptop or server |
 | `output/factors.csv`, `output/factors.json` | Results of the sample run |
@@ -21,7 +22,7 @@ and a script that turns them into factor scores and a 0-100 composite.
 | Source | What it gives | Access | Limits and terms | Factors it feeds |
 |---|---|---|---|---|
 | **PriceCharting** | Per-grade prices (raw, 7, 8, 9, 9.5, PSA 10), sales-volume per grade, recent sold listings from eBay, TCGplayer, Goldin, Fanatics, Heritage | Official API needs a paid subscription token. Public card pages show ~30 eBay + ~30 TCGplayer recent sales | Terms restrict scraping; page mode is for a small demo only. API gives prices + volume but not sale-by-sale history | Liquidity, Volatility, Spread, Trend, Concentration (venue proxy) |
-| **pokemontcg.io** | Card metadata + daily TCGplayer listing prices (low/mid/high/market) and Cardmarket averages (1/7/30-day, trend) | Free; key optional (dev.pokemontcg.io) | 1,000 req/day without key, 20,000 with. Snapshot only, so history must be built by running daily. The API was flaky today (5 of 10 cards timed out) | Spread (listed vs sold), Trend (Cardmarket) |
+| **pokemontcg.io** | Card metadata + daily TCGplayer listing prices (low/mid/high/market) and Cardmarket averages (1/7/30-day, trend) | Free; key optional (dev.pokemontcg.io) | 1,000 req/day without key, 20,000 with. Snapshot only, so history must be built by running daily. Flaky: about 1 in 5 calls returns 500/502, so the fetcher retries and skips. The TCGplayer prices it returned on 2026-10-26 were last updated 2026-10-15 | Spread (listed vs sold), Trend (Cardmarket) |
 | **tcgcsv.com** | Every TCGplayer Pokemon product's daily low/mid/high/market price as JSON | Free, no key | Daily granularity, no individual sales. Dated archives exist for backfill | Volatility and Trend once history accrues |
 | **TCGplayer API** | Same pricing, first party | Closed to new developers | Use tcgcsv instead. Their internal sales-history endpoints are undocumented; we did not use them | |
 | **eBay Browse API** | Active listings: count and asking prices | Free developer account, OAuth client credentials | 5,000 calls/day. **No sold data**: that's the Marketplace Insights API, partner-only. Scraping sold pages violates the user agreement | Spread (ask vs sold), Liquidity (supply) |
@@ -47,12 +48,12 @@ Composite weights: liquidity 30%, volatility 25%, spread 15%, trend 15%, authent
 | Gengar VMAX alt art | 81.4 | A | 89.5 | 81.9 | 43.6 | 90.8 | 74.8 | 98.5 |
 | Pikachu with Grey Felt Hat | 81.2 | A | 99.0 | 65.9 | 74.8 | 99.3 | 74.4 | 67.8 |
 | Giratina V alt art | 81.1 | A | 85.4 | 73.3 | 67.7 | 85.4 | 75.0 | 98.0 |
-| Charizard ex 223 (Obsidian Flames) | 76.2 | A | 96.7 | 61.0 | 69.5 | 97.7 | 75.0 | 53.1 |
+| Charizard ex 223 (Obsidian Flames) | 76.9 | A | 96.7 | 61.0 | 74.5 | 97.7 | 75.0 | 53.1 |
 | Charizard ex 199 (151) | 75.7 | A | 94.5 | 65.1 | 83.4 | 95.9 | 74.4 | 34.9 |
 | Lugia V alt art | 75.5 | A | 94.9 | 61.5 | 66.7 | 96.2 | 75.0 | 55.5 |
-| Umbreon VMAX alt art | 72.8 | B | 83.5 | 61.0 | 64.4 | 98.9 | 73.2 | 61.6 |
+| Umbreon VMAX alt art | 72.6 | B | 83.5 | 61.1 | 63.1 | 98.9 | 73.3 | 61.6 |
 | Base Set Blastoise | 68.2 | B | 92.0 | 42.3 | 21.7 | 100 | 34.7 | 100 |
-| Base Set Charizard | 65.9 | B | 92.0 | 55.4 | 8.4 | 100 | 58.2 | 68.8 |
+| Base Set Charizard | 65.6 | B | 92.0 | 55.4 | 6.1 | 100 | 58.2 | 68.8 |
 | Base Set Venusaur | 52.5 | C | 89.0 | 27.4 | 0.0 | 100 | 65.4 | 37.5 |
 
 What this already shows:
@@ -62,18 +63,21 @@ What this already shows:
 
 ## Caveats on the sample data
 
-- Our cloud sandbox's network policy blocks these sites, so the sample was read through a web-page fetcher and transcribed, not pulled by the scripts. Spot-check a few rows before quoting numbers. The fetch scripts are written to run from a normal machine; `compute_factors.py` was run on the sample.
+- All data files were pulled live by the scripts on 2026-10-26 (pokemontcg.io, tcgcsv.com, PriceCharting page mode). An earlier hand-transcribed version of the PriceCharting file matched the live pull on 577 of 585 sales and every grade line; the scores moved by under 1 point.
 - PriceCharting caps each list at ~30 sales per venue, so "observed sales" is a lower bound; use the per-grade volume figures for liquidity.
-- For the Obsidian Flames Charizard the page labelled its first sales table "All"; it was treated as ungraded.
-- Graded-sale tables were truncated in the fetch and are left out of the sample.
-- `fetch_pricecharting.py page`, `fetch_psa.py`, `fetch_tcgcsv.py` and `fetch_ebay.py` have not been run against the live services (blocked here). The parsing logic compiles and the HTML parser passes a synthetic test, but expect small fixes on first run.
+- Graded-sale tables are parsed but not written out yet; per-grade price and volume come from GRADE lines.
+- **PSA**: `fetch_psa.py` reaches the API, but the account's 100 calls/day quota was already used up on 2026-10-26 (HTTP 429), so the endpoint paths are still unconfirmed and there is no pop data yet. Re-run tomorrow.
+- **eBay**: `api.ebay.com` is reachable, but there are no `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` credentials, so `fetch_ebay.py` has not run.
+- **PriceCharting API mode** needs a paid `PRICECHARTING_TOKEN`; not run.
+- `tcgcsv_prices.csv` and `pokemontcg_snapshot.csv` only become a price history once the fetchers run daily (cron). `compute_factors.py` does not read tcgcsv yet.
 
 ## Running it
 
 ```bash
 python src/compute_factors.py                      # score the sample (no network)
-python src/fetch_pokemontcg.py                     # daily snapshot (key optional; injected in the cloud env)
+python src/fetch_pokemontcg.py                     # daily snapshot (key optional; injected in the cloud env). Re-run to fill cards that 500'd
 python src/fetch_tcgcsv.py                         # daily TCGplayer prices
+python src/fetch_pricecharting.py page            # public pages, ~4s per card
 PRICECHARTING_TOKEN=... python src/fetch_pricecharting.py api
 EBAY_CLIENT_ID=... EBAY_CLIENT_SECRET=... python src/fetch_ebay.py
 python src/fetch_psa.py cert 12345678              # PSA_TOKEN=... outside the cloud env

@@ -1,15 +1,14 @@
-# PriceCharting card pages, read 2026-10-26 through a web fetcher (not a direct API pull).
-# Per card: GRADE lines = grade|current price|sales-volume text; SALE lines = ungraded completed sales date|price|venue.
-# The page shows the 30 most recent eBay and 30 most recent TCGplayer ungraded sales, so counts are capped.
-# Graded sale tables were truncated by the fetcher and are left out; per-grade price and volume come from GRADE lines.
+# PriceCharting page pull 2026-10-26
 
 == base-charizard
-GRADE|Ungraded|449.71|1 sale per week
-GRADE|Grade 7|800.00|2 sales per day
-GRADE|Grade 8|1195.37|3 sales per day
-GRADE|Grade 9|3595.95|1 sale per day
-GRADE|Grade 9.5|8540.00|1 sale per week
 GRADE|PSA 10|26603.23|1 sale per month
+GRADE|Grade 9.5|8540.00|1 sale per week
+GRADE|Grade 9|3595.95|1 sale per day
+GRADE|Grade 8|1195.37|3 sales per day
+GRADE|Grade 7|800.00|2 sales per day
+GRADE|Ungraded|449.71|1 sale per week
+SALE|2026-10-26|285.00|eBay
+SALE|2026-10-26|335.00|eBay
 SALE|2026-10-25|482.81|eBay
 SALE|2026-10-25|300.00|eBay
 SALE|2026-10-25|347.71|eBay
@@ -38,8 +37,6 @@ SALE|2026-10-23|260.00|eBay
 SALE|2026-10-22|250.47|eBay
 SALE|2026-10-22|320.00|eBay
 SALE|2026-10-22|300.00|eBay
-SALE|2026-10-22|544.60|eBay
-SALE|2026-10-22|500.00|eBay
 SALE|2026-10-16|825.00|TCGplayer
 SALE|2026-09-26|800.00|TCGplayer
 SALE|2026-08-23|580.00|TCGplayer
@@ -72,12 +69,12 @@ SALE|2025-11-15|649.00|TCGplayer
 SALE|2025-11-14|431.63|TCGplayer
 
 == base-blastoise
-GRADE|Ungraded|103.99|1 sale per week
-GRADE|Grade 7|240.17|2 sales per day
-GRADE|Grade 8|325.28|3 sales per day
-GRADE|Grade 9|948.92|1 sale per day
-GRADE|Grade 9.5|1044.00|1 sale per month
 GRADE|PSA 10|9458.39|1 sale per week
+GRADE|Grade 9.5|1044.00|1 sale per month
+GRADE|Grade 9|948.92|1 sale per day
+GRADE|Grade 8|325.28|3 sales per day
+GRADE|Grade 7|240.17|2 sales per day
+GRADE|Ungraded|103.99|1 sale per week
 SALE|2026-10-26|76.00|eBay
 SALE|2026-10-25|117.50|eBay
 SALE|2026-10-25|81.00|eBay
@@ -128,12 +125,12 @@ SALE|2025-12-03|154.77|TCGplayer
 SALE|2025-11-26|112.00|TCGplayer
 
 == base-venusaur
-GRADE|Ungraded|71.38|1 sale per week
-GRADE|Grade 7|184.98|2 sales per day
-GRADE|Grade 8|284.00|2 sales per day
-GRADE|Grade 9|614.50|1 sale per day
-GRADE|Grade 9.5|676.00|1 sale per month
 GRADE|PSA 10|5124.29|1 sale per week
+GRADE|Grade 9.5|676.00|1 sale per month
+GRADE|Grade 9|614.50|1 sale per day
+GRADE|Grade 8|284.00|2 sales per day
+GRADE|Grade 7|184.98|2 sales per day
+GRADE|Ungraded|71.38|1 sale per week
 SALE|2026-10-26|61.00|eBay
 SALE|2026-10-25|46.76|eBay
 SALE|2026-10-25|36.00|eBay
@@ -196,12 +193,12 @@ SALE|2025-11-15|340.00|TCGplayer
 SALE|2025-11-10|119.99|TCGplayer
 
 == umbreon-vmax-alt
-GRADE|Ungraded|1780.00|3 sales per week
-GRADE|Grade 7|1668.85|1 sale per month
-GRADE|Grade 8|1800.00|1 sale per week
-GRADE|Grade 9|2052.50|1 sale per day
-GRADE|Grade 9.5|2567.05|2 sales per week
 GRADE|PSA 10|3711.20|2 sales per day
+GRADE|Grade 9.5|2567.05|2 sales per week
+GRADE|Grade 9|2052.50|1 sale per day
+GRADE|Grade 8|1800.00|1 sale per week
+GRADE|Grade 7|1668.85|1 sale per month
+GRADE|Ungraded|1780.00|3 sales per week
 SALE|2026-10-26|670.00|eBay
 SALE|2026-10-26|1850.00|eBay
 SALE|2026-10-23|1780.00|eBay
@@ -231,6 +228,7 @@ SALE|2026-10-06|1475.00|eBay
 SALE|2026-10-06|2200.00|eBay
 SALE|2026-10-06|1575.00|eBay
 SALE|2026-10-05|2349.99|TCGplayer
+SALE|2026-10-03|2388.03|eBay
 SALE|2026-10-03|1800.00|eBay
 SALE|2026-10-03|1750.00|eBay
 SALE|2026-10-03|1934.56|eBay
@@ -251,8 +249,10 @@ SALE|2026-08-19|2425.00|TCGplayer
 SALE|2026-08-15|2425.00|TCGplayer
 SALE|2026-08-12|2349.00|TCGplayer
 SALE|2026-08-07|2300.00|TCGplayer
+SALE|2026-08-05|2325.00|TCGplayer
 SALE|2026-07-30|2499.99|TCGplayer
 SALE|2026-07-27|2300.00|TCGplayer
+SALE|2026-07-22|2275.00|TCGplayer
 SALE|2026-07-13|2489.96|TCGplayer
 SALE|2026-07-08|2250.00|TCGplayer
 SALE|2026-07-07|2250.00|TCGplayer
@@ -261,12 +261,12 @@ SALE|2026-06-19|2100.00|TCGplayer
 SALE|2026-06-18|2199.99|TCGplayer
 
 == gengar-vmax-alt
-GRADE|Ungraded|850.00|1 sale per day
-GRADE|Grade 7|682.24|1 sale per month
-GRADE|Grade 8|820.00|2 sales per week
-GRADE|Grade 9|892.50|1 sale per day
-GRADE|Grade 9.5|1118.55|1 sale per week
 GRADE|PSA 10|2215.32|3 sales per day
+GRADE|Grade 9.5|1118.55|1 sale per week
+GRADE|Grade 9|892.50|1 sale per day
+GRADE|Grade 8|820.00|2 sales per week
+GRADE|Grade 7|682.24|1 sale per month
+GRADE|Ungraded|850.00|1 sale per day
 SALE|2026-10-25|1055.40|eBay
 SALE|2026-10-25|1149.00|eBay
 SALE|2026-10-25|517.75|eBay
@@ -329,12 +329,12 @@ SALE|2026-07-26|799.99|TCGplayer
 SALE|2026-07-22|949.89|TCGplayer
 
 == giratina-v-alt
-GRADE|Ungraded|740.21|1 sale per day
-GRADE|Grade 7|627.70|1 sale per month
-GRADE|Grade 8|750.66|1 sale per week
-GRADE|Grade 9|889.98|1 sale per day
-GRADE|Grade 9.5|988.36|1 sale per week
 GRADE|PSA 10|3094.50|2 sales per day
+GRADE|Grade 9.5|988.36|1 sale per week
+GRADE|Grade 9|889.98|1 sale per day
+GRADE|Grade 8|750.66|1 sale per week
+GRADE|Grade 7|627.70|1 sale per month
+GRADE|Ungraded|740.21|1 sale per day
 SALE|2026-10-25|720.00|eBay
 SALE|2026-10-23|490.44|eBay
 SALE|2026-10-23|610.00|eBay
@@ -397,12 +397,12 @@ SALE|2026-08-11|836.00|TCGplayer
 SALE|2026-08-10|849.99|TCGplayer
 
 == lugia-v-alt
-GRADE|Ungraded|407.00|1 sale per day
-GRADE|Grade 7|298.37|6 sales per year
-GRADE|Grade 8|380.50|2 sales per week
-GRADE|Grade 9|492.50|2 sales per day
-GRADE|Grade 9.5|601.26|1 sale per week
 GRADE|PSA 10|1184.99|4 sales per day
+GRADE|Grade 9.5|601.26|1 sale per week
+GRADE|Grade 9|492.50|2 sales per day
+GRADE|Grade 8|380.50|2 sales per week
+GRADE|Grade 7|298.37|6 sales per year
+GRADE|Ungraded|407.00|1 sale per day
 SALE|2026-10-26|360.00|eBay
 SALE|2026-10-24|421.00|eBay
 SALE|2026-10-23|375.00|eBay
@@ -465,12 +465,12 @@ SALE|2026-08-19|521.39|TCGplayer
 SALE|2026-08-15|490.99|TCGplayer
 
 == charizard-ex-151-sir
-GRADE|Ungraded|298.19|1 sale per day
-GRADE|Grade 7|240.00|1 sale per week
-GRADE|Grade 8|300.00|1 sale per day
-GRADE|Grade 9|359.99|2 sales per day
-GRADE|Grade 9.5|554.50|1 sale per week
 GRADE|PSA 10|1288.33|3 sales per day
+GRADE|Grade 9.5|554.50|1 sale per week
+GRADE|Grade 9|359.99|2 sales per day
+GRADE|Grade 8|300.00|1 sale per day
+GRADE|Grade 7|240.00|1 sale per week
+GRADE|Ungraded|298.19|1 sale per day
 SALE|2026-10-26|315.00|eBay
 SALE|2026-10-26|310.00|eBay
 SALE|2026-10-24|293.00|TCGplayer
@@ -533,12 +533,18 @@ SALE|2026-07-15|550.00|TCGplayer
 SALE|2026-07-10|400.00|TCGplayer
 
 == charizard-ex-obf-sir
-GRADE|Ungraded|89.41|1 sale per day
-GRADE|Grade 7|75.00|1 sale per week
-GRADE|Grade 8|90.50|1 sale per day
-GRADE|Grade 9|126.51|3 sales per day
-GRADE|Grade 9.5|180.00|1 sale per week
 GRADE|PSA 10|657.39|3 sales per day
+GRADE|Grade 9.5|180.00|1 sale per week
+GRADE|Grade 9|126.51|3 sales per day
+GRADE|Grade 8|90.50|1 sale per day
+GRADE|Grade 7|75.00|1 sale per week
+GRADE|Ungraded|89.41|1 sale per day
+SALE|2026-10-26|93.00|eBay
+SALE|2026-10-26|83.00|eBay
+SALE|2026-10-26|90.00|eBay
+SALE|2026-10-26|82.00|eBay
+SALE|2026-10-26|87.00|eBay
+SALE|2026-10-25|90.00|eBay
 SALE|2026-10-24|107.99|eBay
 SALE|2026-10-24|86.99|eBay
 SALE|2026-10-24|70.00|eBay
@@ -565,12 +571,6 @@ SALE|2026-10-20|80.24|eBay
 SALE|2026-10-20|110.00|eBay
 SALE|2026-10-20|90.00|eBay
 SALE|2026-10-20|89.99|eBay
-SALE|2026-10-19|89.95|eBay
-SALE|2026-10-19|46.00|eBay
-SALE|2026-10-18|91.00|eBay
-SALE|2026-10-18|49.99|eBay
-SALE|2026-10-18|120.21|eBay
-SALE|2026-10-18|70.00|eBay
 SALE|2026-10-16|90.00|TCGplayer
 SALE|2026-10-11|90.00|TCGplayer
 SALE|2026-10-07|93.50|TCGplayer
@@ -601,12 +601,12 @@ SALE|2026-08-03|110.00|TCGplayer
 SALE|2026-08-02|113.47|TCGplayer
 
 == pikachu-grey-felt-hat
-GRADE|Ungraded|943.75|1 sale per day
-GRADE|Grade 7|759.44|1 sale per week
-GRADE|Grade 8|837.63|1 sale per day
-GRADE|Grade 9|895.00|4 sales per day
-GRADE|Grade 9.5|1150.00|2 sales per week
 GRADE|PSA 10|2513.89|3 sales per day
+GRADE|Grade 9.5|1150.00|2 sales per week
+GRADE|Grade 9|895.00|4 sales per day
+GRADE|Grade 8|837.63|1 sale per day
+GRADE|Grade 7|759.44|1 sale per week
+GRADE|Ungraded|943.75|1 sale per day
 SALE|2026-10-26|810.00|eBay
 SALE|2026-10-24|950.00|eBay
 SALE|2026-10-22|1049.99|eBay
