@@ -8,15 +8,16 @@ and a script that turns them into factor scores and a 0-100 composite.
 
 | Path | What it is |
 |---|---|
-| `data/cards.csv` | Starter set: 10 cards (3 vintage Base Set holos, 7 modern chase cards) with pokemontcg.io ids and PriceCharting paths |
-| `data/raw/pricecharting_2026-10-26.txt` | Per-grade price + sales volume, and ~60 ungraded sold listings per card (eBay + TCGplayer), 588 sales total, from `fetch_pricecharting.py page` |
-| `data/raw/pokemontcg_snapshot.csv` | TCGplayer low/mid/high/market and Cardmarket avg1/7/30/trend for all 10 cards, one row per card per day |
-| `data/raw/tcgcsv_prices.csv` | TCGplayer low/mid/high/market/direct-low per card per day from tcgcsv.com (starts 2026-10-26) |
+| `data/cards.csv` | Starter set: 10 cards (3 vintage Base Set holos, 7 modern chase cards) with pokemontcg.io ids, PriceCharting paths and TCGplayer product ids |
+| `data/raw/pricecharting_YYYY-MM-DD.txt` | Per-grade price + sales volume, ~60 ungraded sold listings per card (eBay + TCGplayer), and PSA cert numbers that sellers put in graded listing titles (`CERT` lines), from `fetch_pricecharting.py page` |
+| `data/raw/pokemontcg_snapshot.csv` | TCGplayer low/mid/high/market and Cardmarket avg1/7/30/trend for all 10 cards, one row per card per day, with the date pokemontcg.io last refreshed each (`tcg_updated`, `cm_updated`) |
+| `data/raw/tcgcsv_prices.csv` | TCGplayer low/mid/high/market/direct-low per card per day from tcgcsv.com (starts 2026-10-26); `price_date` is tcgcsv's own refresh date (from 2026-10-27). The listed-price source for the score |
 | `src/compute_factors.py` | Computes all six factors and the composite. Standard library only. `python src/compute_factors.py` |
 | `src/fetch_*.py` | One fetcher per source (below), to run on a normal laptop or server |
 | `output/factors.csv`, `output/factors.json` | Results of the sample run |
 | `output/score_history.csv` | Composite, tier and six factor scores per card per as-of date, appended by each `compute_factors.py` run |
-| `data/psa_certs.csv` | PSA cert numbers to verify (`card_key,cert_number`); `fetch_psa.py daily` rotates through them and the spec IDs they reveal, tracked in `data/raw/psa_state.json` |
+| `data/psa_certs.csv` | Pledged slabs to verify (`card_key,cert_number`). Optional: population lookups no longer depend on it (see PSA below) |
+| `data/raw/psa_pop.csv` | PSA population per card spec (total, PSA 10, PSA 9) per day, from `fetch_psa.py daily`; state in `data/raw/psa_state.json`, raw responses in `data/raw/psa/` |
 | `web/` | Frontend web app (Next.js), kept from the earlier version of this repo |
 
 ## Data sources and access
@@ -24,11 +25,11 @@ and a script that turns them into factor scores and a 0-100 composite.
 | Source | What it gives | Access | Limits and terms | Factors it feeds |
 |---|---|---|---|---|
 | **PriceCharting** | Per-grade prices (raw, 7, 8, 9, 9.5, PSA 10), sales-volume per grade, recent sold listings from eBay, TCGplayer, Goldin, Fanatics, Heritage | Official API needs a paid subscription token. Public card pages show ~30 eBay + ~30 TCGplayer recent sales | Terms restrict scraping; page mode is for a small demo only. API gives prices + volume but not sale-by-sale history | Liquidity, Volatility, Spread, Trend, Concentration (venue proxy) |
-| **pokemontcg.io** | Card metadata + daily TCGplayer listing prices (low/mid/high/market) and Cardmarket averages (1/7/30-day, trend) | Free; key optional (dev.pokemontcg.io) | 1,000 req/day without key, 20,000 with. Snapshot only, so history must be built by running daily. Flaky: about 1 in 5 calls returns 500/502, so the fetcher retries and skips. The TCGplayer prices it returned on 2026-10-26 were last updated 2026-10-15 | Spread (listed vs sold), Trend (Cardmarket) |
+| **pokemontcg.io** | Card metadata + daily TCGplayer listing prices (low/mid/high/market) and Cardmarket averages (1/7/30-day, trend) | Free; key optional (dev.pokemontcg.io) | 1,000 req/day without key, 20,000 with. Snapshot only, so history must be built by running daily. Flaky: about 1 in 5 calls returns 500/502, so the fetcher retries and skips. **Its prices are stale upstream**: on 2026-10-27 the TCGplayer block was last refreshed 2026-10-15 and the Cardmarket block between 2025-11-18 and 2026-07-01 depending on the card, so the score skips them (see below) | Metadata; Spread and Trend only when fresh |
 | **tcgcsv.com** | Every TCGplayer Pokemon product's daily low/mid/high/market price as JSON | Free, no key | Daily granularity, no individual sales. Dated archives exist for backfill | Volatility and Trend once history accrues |
 | **TCGplayer API** | Same pricing, first party | Closed to new developers | Use tcgcsv instead. Their internal sales-history endpoints are undocumented; we did not use them | |
 | **eBay Browse API** | Active listings: count and asking prices | Free developer account, OAuth client credentials | 5,000 calls/day. **No sold data**: that's the Marketplace Insights API, partner-only. Scraping sold pages violates the user agreement | Spread (ask vs sold), Liquidity (supply) |
-| **PSA Public API** | Cert lookup (verifies a pledged slab), population by spec | Free account + token | ~100 calls/day. Pop report web pages require login (confirmed: redirect to sign-in) | Authenticity |
+| **PSA Public API** | Cert lookup (verifies a pledged slab, and returns the card's spec ID), population by spec ID | Free account + token | ~100 calls/day. No search by card name: a spec ID only comes from a cert lookup. Pop report web pages require login, and psacard.com is not reachable from the cloud env | Authenticity |
 | **CGC / BGS** | Cert verification on their sites | Web lookup only; no public API | Manual or per-cert | Authenticity |
 | **Distinct buyers** | — | Not available from any public source | eBay, TCGplayer, PriceCharting all hide buyer identity | Concentration (only a venue-diversity proxy is possible; real buyer data would come from our own platform's transactions) |
 
@@ -36,8 +37,8 @@ and a script that turns them into factor scores and a 0-100 composite.
 
 - **Liquidity**: modeled sales per 30 days across all grades, from PriceCharting's volume figures. Log-scaled, 300+/month = 100.
 - **Volatility**: weekly median of TCGplayer Near Mint sales (cleaner than eBay raw, which mixes conditions), then the std of weekly log returns and the max drawdown over 90 days (180 if thin). Sales below 0.5x or above 2x the median are dropped as damaged copies or lots.
-- **Spread**: interquartile range of the last 30 days of sold prices as a % of the median, plus TCGplayer listed mid vs median sold when the snapshot is available.
-- **Authenticity**: share of trading volume that is graded, and the PSA 10 to raw price multiple. Pop counts need a PSA token.
+- **Spread**: interquartile range of the last 30 days of sold prices as a % of the median. TCGplayer listed mid vs median sold is reported alongside (`spr_listed_*`), from tcgcsv first and pokemontcg.io only if fresh.
+- **Authenticity**: share of trading volume that is graded, and the PSA 10 to raw price multiple. When `psa_pop.csv` has the card's PSA population, a pop-depth score (log scale, 5,000 slabs = 100) is averaged in.
 - **Concentration**: 1 minus the venue HHI of observed sales. A weak proxy, so it carries 5% weight.
 - **Trend**: last-30-day median vs the 30 to 120 day median (falls are penalized harder than rises), plus Cardmarket trend vs 30-day average. A manual reprint flag column is included.
 
@@ -68,10 +69,11 @@ What this already shows:
 - All data files were pulled live by the scripts on 2026-10-26 (pokemontcg.io, tcgcsv.com, PriceCharting page mode). An earlier hand-transcribed version of the PriceCharting file matched the live pull on 577 of 585 sales and every grade line; the scores moved by under 1 point.
 - PriceCharting caps each list at ~30 sales per venue, so "observed sales" is a lower bound; use the per-grade volume figures for liquidity.
 - Graded-sale tables are parsed but not written out yet; per-grade price and volume come from GRADE lines.
-- **PSA**: `fetch_psa.py` reaches the API, but the account's 100 calls/day quota was already used up on 2026-10-26 (HTTP 429), so the endpoint paths are still unconfirmed and there is no pop data yet. Re-run tomorrow.
+- **PSA**: the population endpoint needs a spec ID, and the API only hands out spec IDs through a cert lookup. `fetch_pricecharting.py page` now keeps the PSA cert numbers sellers write in graded listing titles (23 found across 6 of the 10 cards on 2026-10-27), and `fetch_psa.py daily` looks those up for any card without a spec ID, checks the cert really is that card (Pokemon name, card number, no 1st Edition / Shadowless variety), then pulls the spec's population. Pledged certs in `data/psa_certs.csv` are still verified first. The API answered HTTP 429 (quota exceeded) on 2026-10-26 and 2026-10-27, even though the 2026-10-27 run made no calls, so the endpoint paths are still unconfirmed and there is no pop data yet.
+- **Stale prices**: `compute_factors.py` skips listed prices whose source refresh date is more than 3 days (TCGplayer) or 7 days (Cardmarket) before the as-of date, and lists them under `stale_price_sources`. Neither price fed a factor score directly (Spread scores sold-price IQR, Trend scores sold-price momentum), so the stale data only affected the reported listed-vs-sold and Cardmarket fields.
 - **eBay**: `api.ebay.com` is reachable, but there are no `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` credentials, so `fetch_ebay.py` has not run.
 - **PriceCharting API mode** needs a paid `PRICECHARTING_TOKEN`; not run.
-- `tcgcsv_prices.csv` and `pokemontcg_snapshot.csv` only become a price history once the fetchers run daily (cron). `compute_factors.py` does not read tcgcsv yet.
+- `tcgcsv_prices.csv` and `pokemontcg_snapshot.csv` only become a price history once the fetchers run daily (cron). tcgcsv refreshes once a day around 20:00 UTC, so the 05:33 UTC daily run records the previous day's prices (`price_date`).
 
 ## Running it
 
@@ -83,6 +85,6 @@ python src/fetch_pricecharting.py page            # public pages, ~4s per card
 PRICECHARTING_TOKEN=... python src/fetch_pricecharting.py api
 EBAY_CLIENT_ID=... EBAY_CLIENT_SECRET=... python src/fetch_ebay.py
 python src/fetch_psa.py cert 12345678              # PSA_TOKEN=... outside the cloud env
-python src/fetch_psa.py daily                      # scheduled: up to 90 calls over certs in data/psa_certs.csv, cached in data/raw/psa/
+python src/fetch_psa.py daily                      # scheduled, after the PriceCharting pull: up to 90 calls, pledged certs, then spec discovery, then pop
 ```
 Python 3.9+, no third-party packages. Run fetchers from the repo root.

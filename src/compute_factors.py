@@ -3,8 +3,8 @@
 Usage:
     python src/compute_factors.py [--asof 2026-10-26]
 
-Reads data/cards.csv, data/raw/pricecharting_*.txt and data/raw/pokemontcg_snapshot.csv,
-writes output/factors.csv and output/factors.json, and records the day's scores in
+Reads data/cards.csv, data/raw/pricecharting_*.txt, data/raw/tcgcsv_prices.csv,
+data/raw/pokemontcg_snapshot.csv and data/raw/psa_pop.csv, writes output/factors.csv and output/factors.json, and records the day's scores in
 output/score_history.csv (one row per card per as-of date). --asof defaults to the date of the
 newest PriceCharting pull. Standard library only.
 """
@@ -30,6 +30,11 @@ WEIGHTS = {
     "authenticity": 0.10,
     "concentration": 0.05,
 }
+
+# Listed prices older than this (by the source's own updated date, not our fetch date) are not used.
+# pokemontcg.io's TCGplayer block stopped refreshing on 2026-10-15 and its Cardmarket block on
+# 2026-07-01, so listed TCGplayer prices come from tcgcsv.com first.
+MAX_PRICE_AGE_DAYS = {"tcgplayer": 3, "cardmarket": 7}
 
 PER_30D = {"day": 30.0, "week": 30.0 / 7, "month": 1.0, "year": 30.0 / 365}
 
@@ -84,6 +89,61 @@ def load_snapshot(asof):
     return {r["ptcg_id"]: r for r in sorted(rows, key=lambda r: r["snapshot_date"])}
 
 
+def load_tcgcsv(asof):
+    """Newest tcgcsv.com TCGplayer price row per card (the pinned tcgplayer_id product)."""
+    path = os.path.join(ROOT, "data", "raw", "tcgcsv_prices.csv")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        rows = [r for r in csv.DictReader(f) if r["snapshot_date"] <= asof.isoformat()]
+    out = {}
+    for r in sorted(rows, key=lambda r: r["snapshot_date"]):
+        out.setdefault(r["card_key"], {})[r["product_id"]] = r
+    return out
+
+
+def load_psa_pop(asof):
+    """Newest PSA population row per card, from fetch_psa.py daily."""
+    path = os.path.join(ROOT, "data", "raw", "psa_pop.csv")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        rows = [r for r in csv.DictReader(f) if r["date"] <= asof.isoformat() and r.get("total")]
+    return {r["card_key"]: r for r in sorted(rows, key=lambda r: r["date"])}
+
+
+def age_days(updated, asof):
+    """Days between a source's own updated date and asof; None when unknown."""
+    try:
+        return (asof - date.fromisoformat((updated or "")[:10])).days
+    except ValueError:
+        return None
+
+
+def listed_prices(card, tcgcsv, snap, asof):
+    """TCGplayer listed low/mid/market from the freshest source, plus notes on any stale ones."""
+    stale = []
+    snap_fresh = False
+    if snap:
+        age = age_days(snap.get("tcg_updated"), asof)
+        snap_fresh = age is not None and age <= MAX_PRICE_AGE_DAYS["tcgplayer"]
+        if not snap_fresh:
+            stale.append(f"pokemontcg.io TCGplayer ({snap.get('tcg_updated') or 'unknown'})")
+    rows = tcgcsv.get(card["card_key"], {})
+    r = rows.get(card.get("tcgplayer_id", "")) or next(iter(rows.values()), None)
+    if r:
+        # Rows fetched before price_date was recorded: assume the price is from the fetch day.
+        updated = r.get("price_date") or r["snapshot_date"]
+        age = age_days(updated, asof)
+        if age is not None and age <= MAX_PRICE_AGE_DAYS["tcgplayer"] and r.get("mid"):
+            return {"source": "tcgcsv", "updated": updated, "low": r["low"], "mid": r["mid"], "market": r["market"]}, stale
+        stale.append(f"tcgcsv TCGplayer ({updated})")
+    if snap_fresh:
+        return {"source": "pokemontcg.io", "updated": snap["tcg_updated"], "low": snap["tcg_low"],
+                "mid": snap["tcg_mid"], "market": snap["tcg_market"]}, stale
+    return None, stale
+
+
 def weekly_medians(sales, start, end):
     buckets = defaultdict(list)
     for s in sales:
@@ -117,7 +177,7 @@ def drop_outliers(sales, lo=0.5, hi=2.0):
     return kept, len(sales) - len(kept)
 
 
-def compute(card, pc, snap, asof):
+def compute(card, pc, snap, asof, tcgcsv=None, pop=None):
     out = {"card_key": card["card_key"], "name": card["name"], "set": card["set"], "era": card["era"]}
     grades = pc["grades"]
     sales, n_out = drop_outliers(pc["sales"])
@@ -158,10 +218,12 @@ def compute(card, pc, snap, asof):
     out.update(spr_median_sold_30d=round(med30, 2) if med30 else None,
                spr_iqr_pct=round(iqr_pct, 4) if iqr_pct is not None else None,
                spr_high_low_pct=round(hl_pct, 4) if hl_pct is not None else None)
-    if snap:
-        tcg_low, tcg_mid, tcg_mkt = (float(snap[k]) for k in ("tcg_low", "tcg_mid", "tcg_market"))
+    listed, stale = listed_prices(card, tcgcsv or {}, snap, asof)
+    if listed:
+        tcg_low, tcg_mid, tcg_mkt = (float(listed[k]) if listed[k] else None for k in ("low", "mid", "market"))
         out.update(spr_tcg_low=tcg_low, spr_tcg_mid=tcg_mid, spr_tcg_market=tcg_mkt,
-                   spr_listed_mid_vs_sold=round(tcg_mid / med30 - 1, 4) if med30 else None)
+                   spr_listed_source=listed["source"], spr_listed_updated=listed["updated"],
+                   spr_listed_mid_vs_sold=round(tcg_mid / med30 - 1, 4) if med30 and tcg_mid else None)
     s_spr = clip(100 * (1 - iqr_pct / 0.6)) if iqr_pct is not None else None
 
     # --- Authenticity: no population data without a PSA account, so we use how much of the
@@ -172,8 +234,14 @@ def compute(card, pc, snap, asof):
     psa10 = grades.get("PSA 10", {}).get("price")
     out.update(auth_graded_share=round(graded_share, 4),
                auth_psa10_over_raw=round(psa10 / raw_price, 2) if raw_price and psa10 else None,
-               auth_pop_report="not available (PSA pop needs an account or API token)")
+               auth_psa_pop_total=None, auth_psa10_share=None, auth_psa_pop_date=None)
     s_auth = clip(100 * graded_share / 0.9)
+    if pop:
+        # A deep PSA population means plenty of verified slabs to compare and resell against.
+        total = float(pop["total"])
+        out.update(auth_psa_pop_total=int(total), auth_psa_pop_date=pop["date"],
+                   auth_psa10_share=round(float(pop["psa10"]) / total, 4) if pop.get("psa10") and total else None)
+        s_auth = statistics.mean([s_auth, clip(100 * math.log10(1 + total) / math.log10(1 + 5000))])
 
     # --- Concentration: buyer identities are not public anywhere. Proxy: how evenly the
     # observed sales spread across venues (1 - HHI, scaled so three even venues = 100).
@@ -190,8 +258,13 @@ def compute(card, pc, snap, asof):
     before = [s["price"] for s in base if d120 <= s["date"] < d30]
     mom = statistics.median(now) / statistics.median(before) - 1 if now and before else None
     out.update(trend_momentum_30d_vs_prior=round(mom, 4) if mom is not None else None)
+    cm_age = age_days(snap.get("cm_updated"), asof) if snap else None
     if snap and float(snap.get("cm_avg30") or 0) and float(snap.get("cm_trend") or 0):
-        out["trend_cardmarket_trend_vs_avg30"] = round(float(snap["cm_trend"]) / float(snap["cm_avg30"]) - 1, 4)
+        if cm_age is not None and cm_age <= MAX_PRICE_AGE_DAYS["cardmarket"]:
+            out["trend_cardmarket_trend_vs_avg30"] = round(float(snap["cm_trend"]) / float(snap["cm_avg30"]) - 1, 4)
+        else:
+            stale.append(f"pokemontcg.io Cardmarket ({snap.get('cm_updated') or 'unknown'})")
+    out["stale_price_sources"] = "; ".join(stale)
     out["trend_reprint_flag"] = ""  # manual input: set when a reprint or promo is announced
     if mom is None:
         s_trend = None
@@ -240,9 +313,10 @@ def main():
 
     with open(os.path.join(ROOT, "data", "cards.csv")) as f:
         cards = list(csv.DictReader(f))
-    pc, snaps = load_pricecharting(asof), load_snapshot(asof)
+    pc, snaps, tcgcsv, pops = load_pricecharting(asof), load_snapshot(asof), load_tcgcsv(asof), load_psa_pop(asof)
 
-    rows = [compute(c, pc[c["card_key"]], snaps.get(c["ptcg_id"]), asof) for c in cards if c["card_key"] in pc]
+    rows = [compute(c, pc[c["card_key"]], snaps.get(c["ptcg_id"]), asof, tcgcsv, pops.get(c["card_key"]))
+            for c in cards if c["card_key"] in pc]
     rows.sort(key=lambda r: -(r["safety_score"] or 0))
 
     os.makedirs(os.path.join(ROOT, "output"), exist_ok=True)
@@ -260,6 +334,11 @@ def main():
         print(f"{r['card_key']:28} {r['safety_score']:>6} {r['tier']:>4}  " + "  ".join(
             f"{r['score_' + k]:>4}" if r['score_' + k] is not None else "  - "
             for k in ("liquidity", "volatility", "spread", "authenticity", "concentration", "trend")))
+    stale = sorted({s for r in rows for s in r["stale_price_sources"].split("; ") if s})
+    if stale:
+        print(f"stale prices skipped (source last updated more than {MAX_PRICE_AGE_DAYS} days before {args.asof}):")
+        for s in stale:
+            print("  " + s)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,10 @@
 Free. Without a key: 1,000 requests/day, 30/min. With a free key (dev.pokemontcg.io): 20,000/day.
 Prices are a daily snapshot (low/mid/high/market listings on TCGplayer, avg1/7/30 + trend on
 Cardmarket), not a sale history, so run this daily (cron) to build your own time series.
+The prices are only as fresh as pokemontcg.io's own refresh of them: tcg_updated and cm_updated
+record the date each block was last refreshed upstream (in Oct 2026 TCGplayer was stuck at
+2026-10-15 and Cardmarket at 2026-07-01). compute_factors.py ignores prices older than a few days
+and uses tcgcsv.com for TCGplayer prices instead.
 
 In the Claude cloud environment the key is a network secret and the proxy adds the X-Api-Key
 header. Elsewhere, set POKEMONTCG_API_KEY (optional).
@@ -20,7 +24,7 @@ from netutil import get  # local helper; run from repo root: python src/fetch_*.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIELDS = ["snapshot_date", "ptcg_id", "name", "set", "release_date", "rarity", "tcgplayer_variant",
           "tcg_low", "tcg_mid", "tcg_high", "tcg_market", "tcg_updated",
-          "cm_avg1", "cm_avg7", "cm_avg30", "cm_trend", "cm_low", "cm_avg_sell"]
+          "cm_avg1", "cm_avg7", "cm_avg30", "cm_trend", "cm_low", "cm_avg_sell", "cm_updated"]
 
 
 def main():
@@ -50,6 +54,7 @@ def main():
                 failed.append(c["ptcg_id"])
             continue
         tp, cm = d.get("tcgplayer", {}), d.get("cardmarket", {}).get("prices", {})
+        cm_updated = (d.get("cardmarket", {}).get("updatedAt") or "").replace("/", "-")
         # Pick the variant with the highest market price (holofoil for most chase cards).
         variants = tp.get("prices", {})
         vname, v = max(variants.items(), key=lambda kv: kv[1].get("market") or 0) if variants else ("", {})
@@ -60,9 +65,9 @@ def main():
             "tcg_low": v.get("low"), "tcg_mid": v.get("mid"), "tcg_high": v.get("high"),
             "tcg_market": v.get("market"), "tcg_updated": (tp.get("updatedAt") or "").replace("/", "-"),
             "cm_avg1": cm.get("avg1"), "cm_avg7": cm.get("avg7"), "cm_avg30": cm.get("avg30"),
-            "cm_trend": cm.get("trendPrice"), "cm_low": cm.get("lowPrice"), "cm_avg_sell": cm.get("averageSellPrice"),
+            "cm_trend": cm.get("trendPrice"), "cm_low": cm.get("lowPrice"), "cm_avg_sell": cm.get("averageSellPrice"), "cm_updated": cm_updated,
         }
-        print("ok", d["id"], vname, v.get("market"))
+        print("ok", d["id"], vname, v.get("market"), "tcgplayer updated", rows[d["id"]]["tcg_updated"], "cardmarket updated", cm_updated)
     with open(out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
         w.writeheader()

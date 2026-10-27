@@ -36,12 +36,15 @@ def main():
     groups = {g["name"]: g["groupId"] for g in get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/groups")["results"]}
     out = os.path.join(ROOT, "data", "raw", "tcgcsv_prices.csv")
     today = datetime.now(timezone.utc).date().isoformat()
+    # tcgcsv refreshes once a day (around 20:00 UTC), so a morning run gets the previous day's prices.
+    # price_date is the date of that refresh, which compute_factors.py uses to spot stale prices.
+    price_date = get("https://tcgcsv.com/last-updated.txt", as_json=False).strip()[:10]
     header = ["snapshot_date", "card_key", "product_id", "product_name", "sub_type",
-              "low", "mid", "high", "market", "direct_low"]
+              "low", "mid", "high", "market", "direct_low", "price_date"]
     kept = []
     if os.path.exists(out):
         with open(out) as f:
-            kept = [r for r in csv.reader(f)][1:]
+            kept = [[r.get(h) or "" for h in header] for r in csv.DictReader(f)]
     new_rows = []
     cache = {}
     for c in cards:
@@ -62,7 +65,8 @@ def main():
         for p in match:
             for pr in (x for x in prices if x["productId"] == p["productId"]):
                 new_rows.append([today, c["card_key"], p["productId"], p["name"], pr["subTypeName"],
-                              pr["lowPrice"], pr["midPrice"], pr["highPrice"], pr["marketPrice"], pr["directLowPrice"]])
+                              pr["lowPrice"], pr["midPrice"], pr["highPrice"], pr["marketPrice"], pr["directLowPrice"],
+                                 price_date])
         print("ok", c["card_key"], [p["name"] for p in match])
     # Keep earlier days; replace today's rows only for cards fetched this run.
     done = {r[1] for r in new_rows}

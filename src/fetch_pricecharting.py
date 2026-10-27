@@ -5,7 +5,8 @@ Two modes:
         (https://www.pricecharting.com/api-documentation). Returns current per-grade prices and
         a sales-volume figure. Prices come back in pennies. No sale-by-sale history.
   page  Reads the public card page, which lists the ~30 most recent eBay and ~30 most recent
-        TCGplayer ungraded sales plus per-grade tables. Their terms restrict automated
+        TCGplayer ungraded sales plus per-grade tables. PSA cert numbers found in graded listing
+        titles are kept as CERT lines for fetch_psa.py. Their terms restrict automated
         scraping, so treat this as a low-volume demo path only (one request every few seconds,
         a handful of cards) and switch to the API for anything real. Selectors checked against
         the live pages on 2026-10-26.
@@ -83,6 +84,29 @@ class SalesTableParser(HTMLParser):
             self.row = None
 
 
+PSA_CERT = re.compile(r"(?:\bcert(?:ificate)?\b\.?\s*(?:#|no\.?|number)?\s*:?\s*|#)(\d{8,10})\b", re.I)
+PSA_GRADE = re.compile(r"\bPSA\s*(10|[1-9](?:\.5)?)\b")
+PSA_GRADE_CERT = re.compile(r"\bPSA\s*(?:10|[1-9](?:\.5)?)\s+(?:[A-Za-z]+\s+){0,2}(\d{8,10})\b")  # "PSA 10 GEM MINT 12345678"
+
+
+def certs_from_titles(rows):
+    """PSA cert numbers that sellers put in graded listing titles ("... PSA 9 Cert 42225385").
+
+    fetch_psa.py looks these up to learn each card's PSA spec ID (needed for population counts)
+    when data/psa_certs.csv has no cert for the card. Other graders' slabs are skipped.
+    """
+    seen, lines = set(), []
+    for r in rows:
+        title = r.get("title", "")
+        if r["section"] == "used" or re.search(r"\b(CGC|BGS|SGC|Beckett|TAG|ACE)\b", title):
+            continue
+        g, c = PSA_GRADE.search(title), PSA_CERT.search(title) or PSA_GRADE_CERT.search(title)
+        if g and c and c.group(1) not in seen:
+            seen.add(c.group(1))
+            lines.append(f"CERT|{c.group(1)}|PSA {g.group(1)}|{r['date']}")
+    return lines
+
+
 def via_page(card):
     html = get(f"https://www.pricecharting.com/game/{card['pricecharting_path']}", as_json=False, delay=4.0)
     p = SalesTableParser()
@@ -94,6 +118,7 @@ def via_page(card):
         price = float(re.sub(r"[^\d.]", "", r["price"]) or 0)
         venue = "TCGplayer" if "TCGPlayer" in r.get("title", "") or r["id"].startswith("tcg") else "eBay"
         lines.append(f"SALE|{r['date']}|{price:.2f}|{venue}")
+    lines += certs_from_titles(p.rows)
     # Per-grade summary: the price table near the top has ids like used_price, graded_price ...,
     # and the row under it has the sales volume per grade, keyed by its completed-sales tab.
     for field, tab, grade in (("used_price", "used", "Ungraded"), ("complete_price", "cib", "Grade 7"),
