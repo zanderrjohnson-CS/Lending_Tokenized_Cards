@@ -4,7 +4,9 @@ Usage:
     python src/compute_factors.py [--asof 2026-10-26]
 
 Reads data/cards.csv, data/raw/pricecharting_*.txt and data/raw/pokemontcg_snapshot.csv,
-writes output/factors.csv and output/factors.json. Standard library only.
+writes output/factors.csv and output/factors.json, and records the day's scores in
+output/score_history.csv (one row per card per as-of date). --asof defaults to the date of the
+newest PriceCharting pull. Standard library only.
 """
 import argparse
 import csv
@@ -42,10 +44,16 @@ def volume_per_30d(text):
     return float(m.group(1)) * PER_30D[m.group(2)] if m else 0.0
 
 
-def load_pricecharting():
+def pricecharting_files(asof=None):
+    paths = sorted(glob.glob(os.path.join(ROOT, "data", "raw", "pricecharting_*.txt")))
+    return [p for p in paths if asof is None or os.path.basename(p)[14:24] <= asof.isoformat()]
+
+
+def load_pricecharting(asof):
     cards = defaultdict(lambda: {"grades": {}, "sales": []})
-    # Use the newest pull only: each file already holds the latest sales window.
-    for path in sorted(glob.glob(os.path.join(ROOT, "data", "raw", "pricecharting_*.txt")))[-1:]:
+    # Each file already holds the latest sales window, so use each card's newest pull: files are
+    # read oldest first and a card's block in a newer file replaces the older one.
+    for path in pricecharting_files(asof):
         key = None
         with open(path) as f:
             for line in f:
@@ -54,6 +62,7 @@ def load_pricecharting():
                     continue
                 if line.startswith("== "):
                     key = line[3:].strip()
+                    cards[key] = {"grades": {}, "sales": []}
                     continue
                 parts = line.split("|")
                 if parts[0] == "GRADE":
@@ -65,12 +74,14 @@ def load_pricecharting():
     return cards
 
 
-def load_snapshot():
+def load_snapshot(asof):
     path = os.path.join(ROOT, "data", "raw", "pokemontcg_snapshot.csv")
     if not os.path.exists(path):
         return {}
     with open(path) as f:
-        return {r["ptcg_id"]: r for r in csv.DictReader(f)}
+        rows = [r for r in csv.DictReader(f) if r["snapshot_date"] <= asof.isoformat()]
+    # Newest snapshot per card.
+    return {r["ptcg_id"]: r for r in sorted(rows, key=lambda r: r["snapshot_date"])}
 
 
 def weekly_medians(sales, start, end):
@@ -200,15 +211,36 @@ def compute(card, pc, snap, asof):
     return out
 
 
+HISTORY_FIELDS = ["date", "card_key", "composite", "tier", "liquidity", "volatility", "spread",
+                  "authenticity", "concentration", "trend"]
+
+
+def write_history(asof, rows):
+    """Append this as-of date's scores; a re-run on the same date replaces that date's rows."""
+    path = os.path.join(ROOT, "output", "score_history.csv")
+    kept = []
+    if os.path.exists(path):
+        with open(path) as f:
+            kept = [r for r in csv.DictReader(f) if r["date"] != asof]
+    new = [{"date": asof, "card_key": r["card_key"], "composite": r["safety_score"], "tier": r["tier"],
+            **{k: r[f"score_{k}"] for k in HISTORY_FIELDS[4:]}} for r in rows]
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=HISTORY_FIELDS)
+        w.writeheader()
+        w.writerows(sorted(kept + new, key=lambda r: (r["date"], r["card_key"])))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--asof", default="2026-10-26")
+    ap.add_argument("--asof", default=None)
     args = ap.parse_args()
+    if args.asof is None:
+        args.asof = os.path.basename(pricecharting_files()[-1])[14:24]
     asof = date.fromisoformat(args.asof)
 
     with open(os.path.join(ROOT, "data", "cards.csv")) as f:
         cards = list(csv.DictReader(f))
-    pc, snaps = load_pricecharting(), load_snapshot()
+    pc, snaps = load_pricecharting(asof), load_snapshot(asof)
 
     rows = [compute(c, pc[c["card_key"]], snaps.get(c["ptcg_id"]), asof) for c in cards if c["card_key"] in pc]
     rows.sort(key=lambda r: -(r["safety_score"] or 0))
@@ -221,6 +253,7 @@ def main():
         w.writerows(rows)
     with open(os.path.join(ROOT, "output", "factors.json"), "w") as f:
         json.dump({"asof": args.asof, "weights": WEIGHTS, "cards": rows}, f, indent=2)
+    write_history(args.asof, rows)
 
     print(f"{'card':28} {'score':>6} tier  liq   vol   spr   auth  conc  trend")
     for r in rows:

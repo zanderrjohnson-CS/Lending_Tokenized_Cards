@@ -19,7 +19,7 @@ import csv
 import os
 import re
 import sys
-from datetime import date
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import quote
 
@@ -116,11 +116,15 @@ def main():
         sys.exit("set PRICECHARTING_TOKEN for api mode")
     with open(os.path.join(ROOT, "data", "cards.csv")) as f:
         cards = list(csv.DictReader(f))
-    out = os.path.join(ROOT, "data", "raw", f"pricecharting_{date.today().isoformat()}.txt")
+    out = os.path.join(ROOT, "data", "raw", f"pricecharting_{datetime.now(timezone.utc).date().isoformat()}.txt")
     with open(out, "w") as f:
-        f.write(f"# PriceCharting {mode} pull {date.today().isoformat()}\n")
+        f.write(f"# PriceCharting {mode} pull {datetime.now(timezone.utc).date().isoformat()}\n")
         for c in cards:
-            lines = via_api(c, token) if mode == "api" else via_page(c)
+            try:
+                lines = via_api(c, token) if mode == "api" else via_page(c)
+            except Exception as e:  # skip the card; compute_factors falls back to its last good pull
+                print("FAILED", c["card_key"], e)
+                continue
             f.write(f"\n== {c['card_key']}\n" + "\n".join(lines) + "\n")
             print("ok", c["card_key"], len(lines), "lines")
     print("wrote", out)

@@ -7,12 +7,13 @@ Cardmarket), not a sale history, so run this daily (cron) to build your own time
 In the Claude cloud environment the key is a network secret and the proxy adds the X-Api-Key
 header. Elsewhere, set POKEMONTCG_API_KEY (optional).
 
-Usage: python src/fetch_pokemontcg.py
+Usage: python src/fetch_pokemontcg.py [ptcg_id ...]   # ids to retry only those cards
 Appends to data/raw/pokemontcg_snapshot.csv (one row per card per day).
 """
 import csv
 import os
-from datetime import date
+import sys
+from datetime import datetime, timezone
 
 from netutil import get  # local helper; run from repo root: python src/fetch_*.py
 
@@ -27,8 +28,10 @@ def main():
     headers = {"X-Api-Key": key} if key else {}
     with open(os.path.join(ROOT, "data", "cards.csv")) as f:
         cards = list(csv.DictReader(f))
+    if sys.argv[1:]:
+        cards = [c for c in cards if c["ptcg_id"] in sys.argv[1:]]
     out = os.path.join(ROOT, "data", "raw", "pokemontcg_snapshot.csv")
-    today = date.today().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     # Re-running on the same day replaces that day's row for each card that succeeds, and keeps
     # the earlier row for a card that fails this time.
     kept = []

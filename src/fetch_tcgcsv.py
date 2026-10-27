@@ -9,12 +9,12 @@ data/cards.csv. tcgcsv also hosts dated archives (see https://tcgcsv.com/faq) th
 backfill history; those are 7z files and are not handled here.
 
 Usage: python src/fetch_tcgcsv.py
-Appends to data/raw/tcgcsv_prices.csv.
+Appends to data/raw/tcgcsv_prices.csv (re-running on the same UTC day replaces that day's rows).
 """
 import csv
 import os
 import re
-from datetime import date
+from datetime import datetime, timezone
 
 from netutil import get
 
@@ -35,33 +35,42 @@ def main():
         cards = list(csv.DictReader(f))
     groups = {g["name"]: g["groupId"] for g in get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/groups")["results"]}
     out = os.path.join(ROOT, "data", "raw", "tcgcsv_prices.csv")
-    new = not os.path.exists(out)
-    with open(out, "a", newline="") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["snapshot_date", "card_key", "product_id", "product_name", "sub_type",
-                        "low", "mid", "high", "market", "direct_low"])
-        cache = {}
-        for c in cards:
-            gid = groups.get(SET_NAMES.get(c["set"], c["set"]))
-            if not gid:
-                print("  no tcgplayer group for", c["set"])
-                continue
-            if gid not in cache:
-                products = get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/{gid}/products")["results"]
-                prices = get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/{gid}/prices")["results"]
-                cache[gid] = (products, prices)
-            products, prices = cache[gid]
-            num = c["number"].split("/")[0].replace("SVP ", "").lstrip("0")
-            # Match on card number from extendedData; fall back to the name.
-            match = [p for p in products
-                     if any(e.get("name") == "Number" and re.sub(r"^0+", "", e["value"].split("/")[0]) == num
-                            for e in p.get("extendedData", []))]
-            for p in match:
-                for pr in (x for x in prices if x["productId"] == p["productId"]):
-                    w.writerow([date.today().isoformat(), c["card_key"], p["productId"], p["name"], pr["subTypeName"],
-                                pr["lowPrice"], pr["midPrice"], pr["highPrice"], pr["marketPrice"], pr["directLowPrice"]])
-            print("ok", c["card_key"], [p["name"] for p in match])
+    today = datetime.now(timezone.utc).date().isoformat()
+    header = ["snapshot_date", "card_key", "product_id", "product_name", "sub_type",
+              "low", "mid", "high", "market", "direct_low"]
+    kept = []
+    if os.path.exists(out):
+        with open(out) as f:
+            kept = [r for r in csv.reader(f)][1:]
+    new_rows = []
+    cache = {}
+    for c in cards:
+        gid = groups.get(SET_NAMES.get(c["set"], c["set"]))
+        if not gid:
+            print("  no tcgplayer group for", c["set"])
+            continue
+        if gid not in cache:
+            products = get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/{gid}/products")["results"]
+            prices = get(f"https://tcgcsv.com/tcgplayer/{POKEMON}/{gid}/prices")["results"]
+            cache[gid] = (products, prices)
+        products, prices = cache[gid]
+        num = c["number"].split("/")[0].replace("SVP ", "").lstrip("0")
+        # Match on card number from extendedData; fall back to the name.
+        match = [p for p in products
+                 if any(e.get("name") == "Number" and re.sub(r"^0+", "", e["value"].split("/")[0]) == num
+                        for e in p.get("extendedData", []))]
+        for p in match:
+            for pr in (x for x in prices if x["productId"] == p["productId"]):
+                new_rows.append([today, c["card_key"], p["productId"], p["name"], pr["subTypeName"],
+                              pr["lowPrice"], pr["midPrice"], pr["highPrice"], pr["marketPrice"], pr["directLowPrice"]])
+        print("ok", c["card_key"], [p["name"] for p in match])
+    # Keep earlier days; replace today's rows only for cards fetched this run.
+    done = {r[1] for r in new_rows}
+    with open(out, "w", newline="") as f:
+        cw = csv.writer(f)
+        cw.writerow(header)
+        cw.writerows(r for r in kept if not (r[0] == today and r[1] in done))
+        cw.writerows(new_rows)
 
 
 if __name__ == "__main__":

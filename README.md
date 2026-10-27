@@ -15,6 +15,8 @@ and a script that turns them into factor scores and a 0-100 composite.
 | `src/compute_factors.py` | Computes all six factors and the composite. Standard library only. `python src/compute_factors.py` |
 | `src/fetch_*.py` | One fetcher per source (below), to run on a normal laptop or server |
 | `output/factors.csv`, `output/factors.json` | Results of the sample run |
+| `output/score_history.csv` | Composite, tier and six factor scores per card per as-of date, appended by each `compute_factors.py` run |
+| `data/psa_certs.csv` | PSA cert numbers to verify (`card_key,cert_number`); `fetch_psa.py daily` rotates through them and the spec IDs they reveal, tracked in `data/raw/psa_state.json` |
 | `web/` | Frontend web app (Next.js), kept from the earlier version of this repo |
 
 ## Data sources and access
@@ -81,5 +83,6 @@ python src/fetch_pricecharting.py page            # public pages, ~4s per card
 PRICECHARTING_TOKEN=... python src/fetch_pricecharting.py api
 EBAY_CLIENT_ID=... EBAY_CLIENT_SECRET=... python src/fetch_ebay.py
 python src/fetch_psa.py cert 12345678              # PSA_TOKEN=... outside the cloud env
+python src/fetch_psa.py daily                      # scheduled: up to 90 calls over certs in data/psa_certs.csv, cached in data/raw/psa/
 ```
 Python 3.9+, no third-party packages. Run fetchers from the repo root.
