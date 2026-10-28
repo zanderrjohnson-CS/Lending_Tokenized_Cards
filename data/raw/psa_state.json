@@ -6,6 +6,12 @@
       "date": "2026-10-27",
       "fetched": [],
       "stopped": null
+    },
+    {
+      "calls": 1,
+      "date": "2026-10-28",
+      "fetched": [],
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
