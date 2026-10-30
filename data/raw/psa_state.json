@@ -18,6 +18,13 @@
       "date": "2026-10-29",
       "fetched": [],
       "stopped": "HTTP 429"
+    },
+    {
+      "calls": 2,
+      "date": "2026-10-30",
+      "fetched": [],
+      "note": "diagnostic curl confirmed PSA body: quota exceeded, max 100/day, Retry-After 3217s",
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
