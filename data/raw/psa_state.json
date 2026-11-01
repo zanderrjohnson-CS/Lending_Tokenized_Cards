@@ -32,6 +32,13 @@
       "fetched": [],
       "note": "diagnostic curl again: quota exceeded, max 100/day, Retry-After 3091s (5th straight day; quota appears consumed elsewhere)",
       "stopped": "HTTP 429"
+    },
+    {
+      "calls": 1,
+      "date": "2026-11-01",
+      "fetched": [],
+      "note": "6th straight day of HTTP 429 on first call; no diagnostic call made. Quota appears consumed elsewhere or token issue; needs a human",
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
