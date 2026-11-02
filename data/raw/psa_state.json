@@ -39,6 +39,13 @@
       "fetched": [],
       "note": "6th straight day of HTTP 429 on first call; no diagnostic call made. Quota appears consumed elsewhere or token issue; needs a human",
       "stopped": "HTTP 429"
+    },
+    {
+      "calls": 15,
+      "date": "2026-11-02",
+      "fetched": [],
+      "note": "401 Unauthorized on every call (14 calls); fetcher kept going and marked certs bad, fixed to stop on 401/403 and cert marks removed. Token injection for api.psacard.com appears broken or expired; needs a human; +1 diagnostic curl also 401",
+      "stopped": "HTTP 401"
     }
   ],
   "specs": {}

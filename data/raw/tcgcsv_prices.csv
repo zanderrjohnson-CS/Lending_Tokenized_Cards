@@ -76,3 +76,14 @@ snapshot_date,card_key,product_id,product_name,sub_type,low,mid,high,market,dire
 2026-11-01,charizard-ex-151-sir,517045,Charizard ex - 199/165,Holofoil,269.99,345.0,10000.0,300.29,308.35,2026-10-31
 2026-11-01,charizard-ex-obf-sir,509980,Charizard ex - 223/197,Holofoil,66.19,96.06,2088.47,83.56,70.02,2026-10-31
 2026-11-01,pikachu-grey-felt-hat,518861,Pikachu with Grey Felt Hat,Normal,765.0,1017.94,6991.93,976.56,900.0,2026-10-31
+2026-11-02,base-charizard,42382,Charizard,Holofoil,475.0,605.0,3499.1,987.13,,2026-11-01
+2026-11-02,base-charizard,657516,Charizard (Black Dot Error),Holofoil,799.95,899.99,998.0,,,2026-11-01
+2026-11-02,base-blastoise,42360,Blastoise,Holofoil,136.89,176.74,1580.2,230.01,,2026-11-01
+2026-11-02,base-venusaur,42355,Venusaur,Holofoil,90.0,134.58,1199.0,140.22,399.0,2026-11-01
+2026-11-02,umbreon-vmax-alt,246723,Umbreon VMAX (Alternate Art Secret),Holofoil,1799.99,2302.48,19362.8,2298.95,2749.95,2026-11-01
+2026-11-02,gengar-vmax-alt,253266,Gengar VMAX (Alternate Art Secret),Holofoil,800.0,1045.0,2749.99,1014.52,879.99,2026-11-01
+2026-11-02,giratina-v-alt,284137,Giratina V (Alternate Full Art),Holofoil,648.99,948.0,13674.81,822.08,948.0,2026-11-01
+2026-11-02,lugia-v-alt,451834,Lugia V (Alternate Full Art),Holofoil,399.99,480.14,3753.63,459.75,509.99,2026-11-01
+2026-11-02,charizard-ex-151-sir,517045,Charizard ex - 199/165,Holofoil,269.98,344.99,10000.0,300.72,294.99,2026-11-01
+2026-11-02,charizard-ex-obf-sir,509980,Charizard ex - 223/197,Holofoil,67.89,94.49,2088.47,83.56,91.99,2026-11-01
+2026-11-02,pikachu-grey-felt-hat,518861,Pikachu with Grey Felt Hat,Normal,765.0,1017.94,6991.85,976.56,900.0,2026-11-01

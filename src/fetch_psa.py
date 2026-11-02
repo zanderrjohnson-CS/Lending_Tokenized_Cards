@@ -135,8 +135,8 @@ def daily(headers, max_calls):
         try:
             d = get(url, headers, retries=1)
         except urllib.error.HTTPError as e:
-            if e.code == 429:
-                stop = "HTTP 429"
+            if e.code in (401, 403, 429):  # quota or auth problem, not a bad cert: stop, mark nothing
+                stop = f"HTTP {e.code}"
                 break
             print("FAILED", kind, key, e)
             if kind == "cert":  # e.g. a bad number from a listing title: don't try it again
