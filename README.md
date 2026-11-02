@@ -1,5 +1,9 @@
 # Card safety score: data sources, scripts, and a first sample
 
+> **Website:** the lending demo (Solana wallet sign-in, borrow/lend, escrow) is in [`web/`](web/README.md):
+> `cd web && npm install && npm run dev`. **ML model:** price, safety score and rate per card, see [`ML_MODEL.md`](ML_MODEL.md);
+> its output `output/ml/web_cards.json` is what the site reads (copied to `web/data/web_cards.json`).
+
 Starter data pipeline for the lending "safety score" (Liquidity, Volatility, Spread, Authenticity,
 Concentration, Trend). Ten popular cards, real prices and sold listings pulled live by the fetch scripts on 2026-10-26,
 and a script that turns them into factor scores and a 0-100 composite.

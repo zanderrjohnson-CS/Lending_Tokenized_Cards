@@ -1,0 +1,13 @@
+{
+  "asof": "2026-11-02",
+  "model": "ml-sample",
+  "cards": [
+    { "card_key": "base-charizard", "name": "Charizard", "set": "Base Set (Unlimited)", "number": "4/102",
+      "score": 41.0, "factors": { "liquidity": 30, "stability": 55 },
+      "suggested_price_usd": 350.0, "suggested_price_psa10_usd": 20000,
+      "price_basis": { "n_sales": 12, "half_life_days": 21, "last_sale_usd": 362, "last_sale_date": "2026-10-30", "market_adj_pct": 1.5 },
+      "apr_pct": 48.0, "default_prob_90d": 0.12 },
+    { "card_key": "charizard-ex-151-sir", "name": "Charizard ex (SIR)", "set": "Scarlet & Violet 151",
+      "score": 88.0, "suggested_price_usd": 15.0, "max_loan_usd": 13.5 }
+  ]
+}
