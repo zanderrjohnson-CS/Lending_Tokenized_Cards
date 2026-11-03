@@ -46,6 +46,13 @@
       "fetched": [],
       "note": "401 Unauthorized on every call (14 calls); fetcher kept going and marked certs bad, fixed to stop on 401/403 and cert marks removed. Token injection for api.psacard.com appears broken or expired; needs a human; +1 diagnostic curl also 401",
       "stopped": "HTTP 401"
+    },
+    {
+      "calls": 1,
+      "date": "2026-11-03",
+      "fetched": [],
+      "note": "2nd straight day of 401 Unauthorized on the first call; token injection for api.psacard.com still broken/expired; needs a human",
+      "stopped": "HTTP 401"
     }
   ],
   "specs": {}
