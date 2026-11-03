@@ -1,0 +1,190 @@
+{
+  "overall": [
+    {
+      "model": "pred",
+      "n": 143632,
+      "spearman": 0.3712528495143247,
+      "auc_big_drop": 0.8211490657813135,
+      "dd_safest_fifth": 0.009504110523391406,
+      "dd_riskiest_fifth": 0.11745868069471957,
+      "big_drop_rate_safest_fifth": 0.004525359417969158,
+      "big_drop_rate_riskiest_fifth": 0.1263271486754621
+    },
+    {
+      "model": "pred_q90",
+      "n": 143632,
+      "spearman": 0.2915181113576004,
+      "auc_big_drop": 0.8625365703335611,
+      "dd_safest_fifth": 0.007498845117749174,
+      "dd_riskiest_fifth": 0.11454653863782051,
+      "big_drop_rate_safest_fifth": 0.0018797646813102655,
+      "big_drop_rate_riskiest_fifth": 0.1403557628711665
+    },
+    {
+      "model": "pred_naive_vol",
+      "n": 143632,
+      "spearman": -0.0774984066592303,
+      "auc_big_drop": 0.5266532645476325,
+      "dd_safest_fifth": 0.0514582831362593,
+      "dd_riskiest_fifth": 0.05675960468353771,
+      "big_drop_rate_safest_fifth": 0.05966512340307028,
+      "big_drop_rate_riskiest_fifth": 0.06781077035541477
+    },
+    {
+      "model": "pred_formula",
+      "n": 143632,
+      "spearman": -0.13475625166947755,
+      "auc_big_drop": 0.6383058170892023,
+      "dd_safest_fifth": 0.05945196486045897,
+      "dd_riskiest_fifth": 0.057772256729302286,
+      "big_drop_rate_safest_fifth": 0.034775646604239915,
+      "big_drop_rate_riskiest_fifth": 0.07087409057680927
+    }
+  ],
+  "by_quarter": [
+    {
+      "model": "pred",
+      "n": 21939,
+      "spearman": 0.41590629043308724,
+      "auc_big_drop": 0.8513215987689842,
+      "dd_safest_fifth": 0.008826715725267368,
+      "dd_riskiest_fifth": 0.13871750813779907,
+      "big_drop_rate_safest_fifth": 0.0068368277119416595,
+      "big_drop_rate_riskiest_fifth": 0.1734275296262534,
+      "quarter": "2025Q2"
+    },
+    {
+      "model": "pred_formula",
+      "n": 21939,
+      "spearman": -0.1284768038926578,
+      "auc_big_drop": 0.6016374527063318,
+      "dd_safest_fifth": 0.07447979034916682,
+      "dd_riskiest_fifth": 0.04957610963697798,
+      "big_drop_rate_safest_fifth": 0.049908842297174114,
+      "big_drop_rate_riskiest_fifth": 0.06039197812215132,
+      "quarter": "2025Q2"
+    },
+    {
+      "model": "pred",
+      "n": 24374,
+      "spearman": 0.36319312282088545,
+      "auc_big_drop": 0.8330348021570376,
+      "dd_safest_fifth": 0.0086990706173535,
+      "dd_riskiest_fifth": 0.11702329923625966,
+      "big_drop_rate_safest_fifth": 0.0034871794871794873,
+      "big_drop_rate_riskiest_fifth": 0.14235897435897435,
+      "quarter": "2025Q3"
+    },
+    {
+      "model": "pred_formula",
+      "n": 24374,
+      "spearman": -0.07039222561136882,
+      "auc_big_drop": 0.6527304763297463,
+      "dd_safest_fifth": 0.04956323157867636,
+      "dd_riskiest_fifth": 0.05972989513460175,
+      "big_drop_rate_safest_fifth": 0.0361025641025641,
+      "big_drop_rate_riskiest_fifth": 0.07753846153846154,
+      "quarter": "2025Q3"
+    },
+    {
+      "model": "pred",
+      "n": 23731,
+      "spearman": 0.44801448009309214,
+      "auc_big_drop": 0.8125175169346898,
+      "dd_safest_fifth": 0.01255110912632946,
+      "dd_riskiest_fifth": 0.14835697032482797,
+      "big_drop_rate_safest_fifth": 0.005687802822835475,
+      "big_drop_rate_riskiest_fifth": 0.15318162663295407,
+      "quarter": "2025Q4"
+    },
+    {
+      "model": "pred_formula",
+      "n": 23731,
+      "spearman": -0.24022131287485743,
+      "auc_big_drop": 0.5949013944860753,
+      "dd_safest_fifth": 0.09249403312610942,
+      "dd_riskiest_fifth": 0.06035367419429111,
+      "big_drop_rate_safest_fifth": 0.052875500315989046,
+      "big_drop_rate_riskiest_fifth": 0.07100716392751791,
+      "quarter": "2025Q4"
+    },
+    {
+      "model": "pred",
+      "n": 30404,
+      "spearman": 0.28973290189816925,
+      "auc_big_drop": 0.811827089585963,
+      "dd_safest_fifth": 0.009581537734250769,
+      "dd_riskiest_fifth": 0.0836292322659246,
+      "big_drop_rate_safest_fifth": 0.004440059200789344,
+      "big_drop_rate_riskiest_fifth": 0.09373458312777504,
+      "quarter": "2026Q1"
+    },
+    {
+      "model": "pred_formula",
+      "n": 30404,
+      "spearman": -0.05748427382338441,
+      "auc_big_drop": 0.7701874496768433,
+      "dd_safest_fifth": 0.02023020828680065,
+      "dd_riskiest_fifth": 0.04981021074399141,
+      "big_drop_rate_safest_fifth": 0.003453379378391712,
+      "big_drop_rate_riskiest_fifth": 0.060351915803321825,
+      "quarter": "2026Q1"
+    },
+    {
+      "model": "pred",
+      "n": 31451,
+      "spearman": 0.3600633963211411,
+      "auc_big_drop": 0.8081745270624533,
+      "dd_safest_fifth": 0.005975045621656042,
+      "dd_riskiest_fifth": 0.09659806620560188,
+      "big_drop_rate_safest_fifth": 0.002861230329041488,
+      "big_drop_rate_riskiest_fifth": 0.08378378378378379,
+      "quarter": "2026Q2"
+    },
+    {
+      "model": "pred_formula",
+      "n": 31451,
+      "spearman": -0.11731577536745602,
+      "auc_big_drop": 0.6613990950524853,
+      "dd_safest_fifth": 0.050848113316331704,
+      "dd_riskiest_fifth": 0.05082289660694286,
+      "big_drop_rate_safest_fifth": 0.02447941503735495,
+      "big_drop_rate_riskiest_fifth": 0.059777424483306835,
+      "quarter": "2026Q2"
+    },
+    {
+      "model": "pred",
+      "n": 11733,
+      "spearman": 0.4929279650030693,
+      "auc_big_drop": 0.8449620353344576,
+      "dd_safest_fifth": 0.005816636162001552,
+      "dd_riskiest_fifth": 0.15445949950506874,
+      "big_drop_rate_safest_fifth": 0.0008521516829995739,
+      "big_drop_rate_riskiest_fifth": 0.14103110353642948,
+      "quarter": "2026Q3"
+    },
+    {
+      "model": "pred_formula",
+      "n": 11733,
+      "spearman": -0.2693294271704167,
+      "auc_big_drop": 0.5080113340364163,
+      "dd_safest_fifth": 0.10602294441594518,
+      "dd_riskiest_fifth": 0.054393518118656635,
+      "big_drop_rate_safest_fifth": 0.07243289305496378,
+      "big_drop_rate_riskiest_fifth": 0.060502769492969746,
+      "quarter": "2026Q3"
+    }
+  ],
+  "q90_coverage": 0.8813008243288404,
+  "label_summary": {
+    "count": 143632.0,
+    "mean": 0.04346671439442709,
+    "std": 0.10420727442641398,
+    "min": 0.0,
+    "50%": 0.0,
+    "75%": 0.03131235125955628,
+    "90%": 0.14196097521355275,
+    "95%": 0.24923939945883844,
+    "max": 0.95
+  }
+}

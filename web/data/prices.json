@@ -1,0 +1,146 @@
+{
+  "asof": "2026-10-26",
+  "market_trend_30d_pct": -10,
+  "cards": {
+    "base-charizard": {
+      "suggested_price_usd": 342,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 58,
+        "outliers_dropped": 2,
+        "half_life_days": 14,
+        "weighted_median_usd": 360,
+        "plain_median_usd": 500,
+        "last_sale_usd": 482.81,
+        "last_sale_date": "2026-10-25",
+        "market_adj_pct": -5
+      }
+    },
+    "base-blastoise": {
+      "suggested_price_usd": 109.25,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 41,
+        "outliers_dropped": 7,
+        "half_life_days": 14,
+        "weighted_median_usd": 115,
+        "plain_median_usd": 120,
+        "last_sale_usd": 76,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    },
+    "base-venusaur": {
+      "suggested_price_usd": 77.89,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 47,
+        "outliers_dropped": 13,
+        "half_life_days": 14,
+        "weighted_median_usd": 81.99,
+        "plain_median_usd": 130,
+        "last_sale_usd": 61,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    },
+    "umbreon-vmax-alt": {
+      "suggested_price_usd": 1733.75,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 52,
+        "outliers_dropped": 5,
+        "half_life_days": 14,
+        "weighted_median_usd": 1825,
+        "plain_median_usd": 2000,
+        "last_sale_usd": 1850,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    },
+    "gengar-vmax-alt": {
+      "suggested_price_usd": 807.5,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 60,
+        "outliers_dropped": 0,
+        "half_life_days": 14,
+        "weighted_median_usd": 850,
+        "plain_median_usd": 949.95,
+        "last_sale_usd": 1055.4,
+        "last_sale_date": "2026-10-25",
+        "market_adj_pct": -5
+      }
+    },
+    "giratina-v-alt": {
+      "suggested_price_usd": 736.25,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 58,
+        "outliers_dropped": 2,
+        "half_life_days": 14,
+        "weighted_median_usd": 775,
+        "plain_median_usd": 810,
+        "last_sale_usd": 720,
+        "last_sale_date": "2026-10-25",
+        "market_adj_pct": -5
+      }
+    },
+    "lugia-v-alt": {
+      "suggested_price_usd": 403.75,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 60,
+        "outliers_dropped": 0,
+        "half_life_days": 14,
+        "weighted_median_usd": 425,
+        "plain_median_usd": 464.5,
+        "last_sale_usd": 360,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    },
+    "charizard-ex-151-sir": {
+      "suggested_price_usd": 285.87,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 60,
+        "outliers_dropped": 0,
+        "half_life_days": 14,
+        "weighted_median_usd": 300.92,
+        "plain_median_usd": 320,
+        "last_sale_usd": 315,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    },
+    "charizard-ex-obf-sir": {
+      "suggested_price_usd": 82.75,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 59,
+        "outliers_dropped": 1,
+        "half_life_days": 14,
+        "weighted_median_usd": 87.11,
+        "plain_median_usd": 98.81,
+        "last_sale_usd": 107.99,
+        "last_sale_date": "2026-10-24",
+        "market_adj_pct": -5
+      }
+    },
+    "pikachu-grey-felt-hat": {
+      "suggested_price_usd": 870.58,
+      "price_basis": {
+        "method": "recency-weighted median, 14-day half-life, + half of market 30-day trend",
+        "n_sales": 60,
+        "outliers_dropped": 0,
+        "half_life_days": 14,
+        "weighted_median_usd": 916.4,
+        "plain_median_usd": 961.25,
+        "last_sale_usd": 810,
+        "last_sale_date": "2026-10-26",
+        "market_adj_pct": -5
+      }
+    }
+  }
+}
