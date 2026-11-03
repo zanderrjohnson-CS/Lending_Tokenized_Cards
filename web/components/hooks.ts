@@ -48,7 +48,7 @@ export function useLoanAction(onDone?: () => void) {
       const built = await api(`/api/loans/${loanId}`, { action, phase: "build" });
       push({ label: "Preparing transaction", state: "done" });
       if (built.done) { onDone?.(); return true; }
-      push({ label: labels.sign, state: "doing", detail: "Approve in your wallet" });
+      push({ label: labels.sign, state: "doing", detail: "Approve in your wallet (set to Devnet)" });
       const sig = await signAndSend(wallet, connection, built);
       push({ label: labels.sign, state: "done", tx: sig });
       push({ label: labels.confirm, state: "doing" });
