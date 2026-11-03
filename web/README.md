@@ -90,6 +90,27 @@ The blockchain secures the **token**, not the **card**:
 - Also: SOL price risk (loans are in SOL, collateral is priced in USD; a stablecoin like USDC would fix this), and in the
   demo there's no liquidation before the due date if the card's price drops.
 
+## Security notes (demo vs. real)
+
+What an attacker could do today, roughly worst first:
+1. **Mint a token for a card they don't own.** In the demo the vault signs every mint request, so anyone can tokenize a
+   "Charizard" and borrow against it. In production the vault must only issue a token after the physical card is
+   received and authenticated. This is the single biggest gap.
+2. **Steal the escrow key.** `ESCROW_SECRET_KEY` (or `.data/escrow-keypair.json`) controls every pledged card token.
+   Whoever gets the server gets the collateral. Keep it in a secrets manager or move escrow into an on-chain program.
+3. **Game the price.** Wash-trading a thin card can inflate its suggested price before borrowing. The 10% haircut and the
+   liquidity part of the score reduce this but don't remove it.
+4. **Phishing.** A copycat site can ask you to sign something else. Always check the domain in the wallet popup.
+
+Already handled: sessions need a wallet signature and use a random per-server secret (set `SESSION_SECRET` to keep
+sessions across restarts); the server checks the chain before every status change and never trusts the browser; repay
+is atomic; escrow only co-signs transactions the server builds for the right party and state; transaction signatures
+can't be replayed; funding and cancelling take a lock so a lender can't fund a loan that's being withdrawn; every
+transaction is dry-run on devnet before the wallet is asked to sign.
+
+Not done (needed before real money): rate limiting, a real database, audit of dependencies (`npm audit`), and an
+external security review.
+
 ## Code map
 
 | Path | What |

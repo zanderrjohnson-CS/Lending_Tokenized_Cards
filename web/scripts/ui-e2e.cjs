@@ -108,6 +108,16 @@ let b, l;
   await b.waitForTimeout(500);
   await b.screenshot({ path: `${OUT}/12-loan-detail.png`, fullPage: true });
 
+  // a wallet with no devnet SOL gets a clear message instead of a wallet "failed to simulate" warning
+  const broke = await walletPage(browser, Keypair.generate(), "Mock Wallet");
+  await broke.goto(BASE + "/borrow");
+  await connectAndSignIn(broke);
+  await broke.getByRole("button", { name: "+ Tokenize a card" }).click();
+  await broke.locator(".pick").first().click();
+  await broke.getByRole("button", { name: "Issue card token" }).click();
+  await broke.getByText(/no devnet SOL/).waitFor({ timeout: 15000 });
+  await broke.screenshot({ path: `${OUT}/14-no-sol-message.png` });
+
   // phone layout
   const m = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await m.goto(BASE + "/"); await m.waitForSelector(".sb-row");

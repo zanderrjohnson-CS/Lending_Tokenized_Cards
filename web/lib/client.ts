@@ -1,5 +1,5 @@
 "use client";
-import { Connection, Transaction } from "@solana/web3.js";
+import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 
 export async function api<T = any>(path: string, body?: unknown): Promise<T> {
@@ -23,10 +23,37 @@ export async function signAndSend(
 ): Promise<string> {
   if (!wallet.signTransaction) throw new Error("This wallet can't sign transactions");
   const tx = Transaction.from(b64ToBytes(built.tx));
-  const signed = await wallet.signTransaction(tx);
+  // Dry-run on devnet before the wallet sees it, so the user gets the real reason instead of a
+  // wallet's generic "failed to simulate" warning.
+  await preflight(connection, tx);
+  let signed: Transaction;
+  try {
+    signed = await wallet.signTransaction(tx);
+  } catch (e: any) {
+    if (/reject|cancel|denied|closed/i.test(String(e?.message ?? e))) throw new Error("You cancelled the request in your wallet.");
+    throw e;
+  }
   const sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
   await waitForSignature(connection, sig, built.lastValidBlockHeight);
   return sig;
+}
+
+export const NETWORK_HINT =
+  "If your wallet warns that it failed to simulate, set it to Devnet (Phantom: Settings > Developer Settings > Testnet Mode > Solana Devnet).";
+
+async function preflight(connection: Connection, tx: Transaction) {
+  const payer = tx.feePayer!;
+  const bal = await connection.getBalance(payer, "confirmed").catch(() => null);
+  if (bal === 0) throw new Error(`Your wallet has no devnet SOL to pay the network fee. Use "+ airdrop" in the top bar or faucet.solana.com, then try again.`);
+  const vtx = VersionedTransaction.deserialize(tx.serialize({ requireAllSignatures: false, verifySignatures: false }));
+  const sim = await connection.simulateTransaction(vtx, { sigVerify: false, replaceRecentBlockhash: false, commitment: "confirmed" }).catch(() => null);
+  if (!sim || !sim.value.err) return; // RPC hiccup: let the wallet's own check decide
+  const logs = (sim.value.logs ?? []).join("\n");
+  const err = JSON.stringify(sim.value.err);
+  if (/insufficient (lamports|funds)/i.test(logs) || /InsufficientFunds|AccountNotFound/.test(err))
+    throw new Error(`Not enough devnet SOL in your wallet for this step. Use "+ airdrop" or faucet.solana.com, then try again.`);
+  if (/BlockhashNotFound/.test(err)) throw new Error("The transaction expired before you signed it. Please try again.");
+  throw new Error(`This transaction would fail on devnet (${err}). ${NETWORK_HINT}`);
 }
 
 /** Poll for confirmation over HTTP (more reliable than websockets on public devnet RPCs). */

@@ -17,7 +17,7 @@ function loadOrCreate(name: string, envVar: string): Keypair {
   } catch {
     const kp = Keypair.generate();
     fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(Array.from(kp.secretKey)));
+    fs.writeFileSync(file, JSON.stringify(Array.from(kp.secretKey)), { mode: 0o600 });
     return kp;
   }
 }

@@ -3,6 +3,7 @@
 //   npx tsx scripts/rpc-shim.ts 8899
 import http from "http";
 import bs58 from "bs58";
+process.env.SVM_NO_SIGVERIFY = "1";
 import { makeSvm } from "./svm";
 import { PublicKey, SystemProgram, Transaction, SystemInstruction } from "@solana/web3.js";
 import { AccountLayout, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -30,6 +31,10 @@ const methods: Record<string, (p: any[]) => any> = {
   getLatestBlockhash: () => ({ context: ctx, value: { blockhash: svm.latestBlockhash(), lastValidBlockHeight: 1000 } }),
   getMinimumBalanceForRentExemption: ([n]) => svm.rent(n),
   getBlockHeight: () => 1,
+  simulateTransaction: ([b64]) => {
+    const r = svm.simulateRaw(Buffer.from(b64, "base64"));
+    return { context: ctx, value: { err: r.err ? { InstructionError: [0, r.err] } : null, logs: r.logs, accounts: null, unitsConsumed: 0, returnData: null } };
+  },
   getBalance: ([a]) => ({ context: ctx, value: svm.balance(a) }),
   requestAirdrop: ([a, l]) => { svm.airdrop(a, l); const sig = bs58.encode(crypto.getRandomValues(new Uint8Array(64))); drops.add(sig); return sig; },
   getTokenAccountBalance: ([a]) => {

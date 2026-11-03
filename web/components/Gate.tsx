@@ -20,6 +20,7 @@ export default function Gate({ children, why }: { children: ReactNode; why: stri
         <>
           <button className="btn primary" onClick={signIn} disabled={signingIn}>{signingIn ? "Check your wallet…" : "Sign in"}</button>
           <p className="fine">You will sign a message, not a transaction. It costs nothing and proves you own this address.</p>
+          <p className="fine">This demo runs on Solana <b>devnet</b>. Set your wallet to Devnet first (Phantom: Settings → Developer Settings → Testnet Mode → Solana Devnet).</p>
         </>
       ) : (
         <WalletMultiButton />

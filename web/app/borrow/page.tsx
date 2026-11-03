@@ -146,7 +146,7 @@ function TokenizeModal({ open, onClose, onDone }: { open: boolean; onClose: () =
       push({ label: "Vault prepares the card token", state: "doing" });
       const built = await api("/api/cards", { cardKey: key, grade, certNumber: cert });
       push({ label: "Vault prepares the card token", state: "done" });
-      push({ label: "Approve the mint in your wallet", state: "doing", detail: "You pay the small network fee and rent (~0.004 SOL)" });
+      push({ label: "Approve the mint in your wallet", state: "doing", detail: "Approve in your wallet (set to Devnet). You pay ~0.004 devnet SOL in fees and rent" });
       const sig = await signAndSend(wallet, connection, built);
       push({ label: "Approve the mint in your wallet", state: "done", tx: sig });
       push({ label: "Checking the token on-chain", state: "doing" });
@@ -213,7 +213,7 @@ function QuoteModal({ card, cat, onClose, onDone }: { card: MyCard; cat?: Catalo
       const r = await api("/api/loans", { mint: card.mint, principalLamports: principal, termSec: term });
       setCreated(r.loan.id);
       push({ label: "Locking in terms", state: "done" });
-      push({ label: "Move card token into escrow", state: "doing", detail: "Approve in your wallet" });
+      push({ label: "Move card token into escrow", state: "doing", detail: "Approve in your wallet (set to Devnet)" });
       const sig = await signAndSend(wallet, connection, r);
       push({ label: "Move card token into escrow", state: "done", tx: sig });
       push({ label: "Escrow confirms receipt", state: "doing" });
