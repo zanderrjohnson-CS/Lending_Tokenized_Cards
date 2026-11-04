@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import Gate from "@/components/Gate";
 import { useCatalog, useFetch, useLoanAction, usePlatform, type CatalogEntry } from "@/components/hooks";
-import { AddrLink, CardArt, Countdown, Empty, FactorBars, Modal, PriceBasisNote, ScoreRing, StatusPill, Steps } from "@/components/ui";
+import { AddrLink, AprCurve, CardArt, Countdown, Empty, FactorBars, Modal, PriceBasisNote, ScoreRing, StatusPill, Steps } from "@/components/ui";
 import { api, confirmWithRetry, signAndSend, sol, usd } from "@/lib/client";
-import { fmtTerm, repayAmount } from "@/lib/terms";
+import { aprAt, fmtTerm, repayAmount } from "@/lib/terms";
 import { SOL_USD, usdToLamports } from "@/lib/config";
 import type { Grade, Loan, LoanTerms, ScoreResult, TokenizedCard } from "@/lib/types";
 import { useSession } from "../providers";
@@ -68,7 +68,7 @@ function Borrow() {
                     {c.score && <ScoreRing score={c.score.score} size={48} />}
                   </div>
                   <div className="kv"><span>Suggested price</span><b>{c.score ? usd(c.score.suggestedPriceUsd) : "—"}</b></div>
-                  {c.terms && <div className="kv"><span>Borrow up to</span><b>{usd(c.terms.maxLoanUsd)} at {c.terms.aprPct}%</b></div>}
+                  {c.terms && <div className="kv"><span>Suggested loan</span><b>{usd(c.terms.suggestedLoanUsd)} at {c.terms.aprPct}%</b></div>}
                   <div className="kv"><span>Token</span><AddrLink addr={c.mint} /></div>
                   {c.openLoanId ? (
                     <Link className="btn ghost full" href={`/loans/${c.openLoanId}`}>{c.openLoanStatus === "active" ? "Pledged on an active loan" : "In a loan request"} →</Link>
@@ -199,10 +199,15 @@ function QuoteModal({ card, cat, onClose, onDone }: { card: MyCard; cat?: Catalo
   const platform = usePlatform();
   const maxLamports = usdToLamports(terms.maxLoanUsd);
   const priceLamports = usdToLamports(score.suggestedPriceUsd);
-  const [pct, setPct] = useState(100); // % of max
+  // Start at the model's suggested loan; the borrower can slide along the rate curve.
+  // Slider in tenths of a percent of the max, so the default lands on the suggested loan exactly.
+  const suggestedPct = Math.max(20, Math.min(1000, Math.round((terms.suggestedLoanUsd / terms.maxLoanUsd) * 1000)));
+  const [pct, setPct] = useState(suggestedPct); // per mille of max
   const [term, setTerm] = useState(30 * 86400);
-  const principal = Math.floor((maxLamports * pct) / 100);
-  const repay = useMemo(() => repayAmount(principal, terms.aprPct, term, terms.minInterestPct), [principal, term, terms]);
+  const principal = Math.floor((maxLamports * pct) / 1000);
+  const principalUsd = (principal / 1e9) * SOL_USD;
+  const apr = aprAt(terms, principalUsd);
+  const repay = useMemo(() => repayAmount(principal, apr, term, terms.minInterestPct), [principal, apr, term, terms]);
   const { steps, busy, setBusy, setSteps, push } = useLoanAction();
   const [created, setCreated] = useState<string | null>(null);
 
@@ -232,7 +237,8 @@ function QuoteModal({ card, cat, onClose, onDone }: { card: MyCard; cat?: Catalo
           {cat && <CardArt src={cat.image} alt={cat.name} />}
           <div className="row-between"><b>{cat?.name}</b><ScoreRing score={score.score} /></div>
           <FactorBars factors={score.factors} />
-          <p className="fine">Safety score from {score.source}, data as of {score.asOf}. It sets your rate, not your loan size.</p>
+          <p className="fine">Safety score from {score.source}, data as of {score.asOf}, relative to all cards (a typical card is about 50).
+            It reflects how reliably the card could be sold for the loan amount after a default.</p>
         </div>
         <div className="quote-right">
           <div className="price-hero">
@@ -241,13 +247,21 @@ function QuoteModal({ card, cat, onClose, onDone }: { card: MyCard; cat?: Catalo
             <PriceBasisNote basis={score.priceBasis} />
           </div>
           <div className="terms-strip">
-            <div><span>Borrow up to</span><b>{usd(terms.maxLoanUsd)}</b></div>
-            <div><span>APR (from score)</span><b>{terms.aprPct}%</b></div>
+            <div><span>Suggested loan</span><b>{usd(terms.suggestedLoanUsd)}</b></div>
+            <div><span>APR at that size</span><b>{terms.aprPct}%</b></div>
+            <div><span>Max loan</span><b>{usd(terms.maxLoanUsd)}</b></div>
           </div>
           <label>Borrow amount</label>
-          <div className="big">{sol(principal)} SOL <small>≈ {usd((principal / 1e9) * SOL_USD)}</small></div>
-          <input type="range" min={5} max={100} value={pct} onChange={(e) => setPct(Number(e.target.value))} />
-          <div className="muted small">{Math.round((principal / priceLamports) * 100)}% of the suggested price (max {Math.round(terms.maxAdvance * 100)}%, {sol(maxLamports)} SOL)</div>
+          <div className="row-between">
+            <div className="big">{sol(principal)} SOL <small>≈ {usd(principalUsd)}</small></div>
+            <div className="big apr-live">{apr}% <small>APR</small></div>
+          </div>
+          <input type="range" min={20} max={1000} value={pct} onChange={(e) => setPct(Number(e.target.value))} aria-label="Borrow amount" />
+          <div className="muted small">
+            {Math.round((principal / priceLamports) * 100)}% of the suggested price.{" "}
+            {pct !== suggestedPct && <button className="linkish" onClick={() => setPct(suggestedPct)}>Back to suggested</button>}
+          </div>
+          {terms.aprCurve && <AprCurve terms={terms} loanUsd={principalUsd} />}
           <label>Term</label>
           <div className="seg wrap">
             {terms.termOptionsSec.map((t) => <button key={t} className={term === t ? "on" : ""} onClick={() => setTerm(t)}>{fmtTerm(t)}</button>)}

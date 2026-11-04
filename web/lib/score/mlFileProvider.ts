@@ -11,6 +11,8 @@ interface MlCard {
   suggested_price_usd: number; suggested_price_psa10_usd?: number | null;
   price_basis?: Record<string, unknown>;
   max_loan_usd?: number | null; apr_pct?: number | null; default_prob_90d?: number | null;
+  suggested_ltv?: number | null; max_lendable_ltv?: number | null;
+  negotiation?: { apr_curve?: { ltv: number; loan_usd: number; apr_pct: number; default_prob_90d?: number }[] };
 }
 interface MlFile { asof: string; model?: string; cards: MlCard[] }
 
@@ -34,7 +36,12 @@ function toScore(f: MlFile, c: MlCard, grade: Grade): ScoreResult | null {
     suggestedPriceUsd: price,
     priceBasis: c.price_basis as ScoreResult["priceBasis"],
     aprPct: num(c.apr_pct),
-    maxLoanUsd: num(c.max_loan_usd) !== undefined ? Math.round(c.max_loan_usd! * scale * 100) / 100 : undefined,
+    // max_loan_usd is the model's suggested (negotiable) loan; max_lendable_ltv is the hard cap.
+    suggestedLoanUsd: num(c.max_loan_usd) !== undefined ? Math.round(c.max_loan_usd! * scale * 100) / 100 : undefined,
+    maxLendableLtv: num(c.max_lendable_ltv),
+    aprCurve: c.negotiation?.apr_curve?.map((p) => ({
+      ltv: p.ltv, loanUsd: Math.round(p.loan_usd * scale * 100) / 100, aprPct: p.apr_pct, defaultProb90d: p.default_prob_90d,
+    })),
     defaultProb90d: num(c.default_prob_90d),
     asOf: f.asof,
     source: f.model || "ml",

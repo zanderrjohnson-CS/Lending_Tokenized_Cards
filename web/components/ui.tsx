@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { explorerAddr, explorerTx } from "@/lib/config";
 import { short } from "@/lib/client";
-import type { FactorScores, LoanStatus, PriceBasis } from "@/lib/types";
+import type { FactorScores, LoanStatus, LoanTerms, PriceBasis } from "@/lib/types";
+import { aprAt } from "@/lib/terms";
 import { usd } from "@/lib/client";
 import type { Step } from "./hooks";
 import { useNow } from "./hooks";
@@ -11,9 +12,9 @@ import { useNow } from "./hooks";
 /** Colour is only a visual cue; the score itself sets the rate, there are no tiers. */
 export function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r = size / 2 - 5, c = 2 * Math.PI * r;
-  const band = score >= 75 ? "hi" : score >= 55 ? "mid" : "lo";
+  const band = score >= 60 ? "hi" : score >= 40 ? "mid" : "lo";
   return (
-    <div className={`ring band-${band}`} style={{ width: size, height: size }} title={`Safety score ${score} / 100: how safely this card can be sold for the loan amount`}>
+    <div className={`ring band-${band}`} style={{ width: size, height: size }} title={`Safety score ${score} / 100, relative to all cards (a typical card is about 50)`}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={size / 2} cy={size / 2} r={r} className="ring-bg" />
         <circle cx={size / 2} cy={size / 2} r={r} className="ring-fg" strokeDasharray={`${(score / 100) * c} ${c}`}
@@ -25,8 +26,8 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
 }
 
 const FACTOR_LABELS: Record<keyof FactorScores, [string, string]> = {
-  liquidity: ["Liquidity", "How often it sells"],
-  stability: ["Stability", "How little the price is expected to fall"],
+  liquidity: ["Liquidity", "How often it sells (percentile vs all cards)"],
+  stability: ["Stability", "How little the price is expected to fall (percentile vs all cards)"],
   volatility: ["Stability", "How little the price swings"],
   spread: ["Price agreement", "How tightly sale prices cluster"],
   trend: ["Trend", "Recent direction of price"],
@@ -54,13 +55,39 @@ export function FactorBars({ factors }: { factors: FactorScores }) {
 export function PriceBasisNote({ basis }: { basis?: PriceBasis }) {
   if (!basis) return null;
   const bits: string[] = [];
-  if (basis.n_sales) bits.push(`${basis.half_life_days ? "recency-weighted median" : "median"} of ${basis.n_sales} sales${basis.half_life_days ? ` (recent sales count most)` : ""}`);
+  if (basis.recency_weight) bits.push(`${basis.n_sales ? `${basis.n_sales} sales, ` : ""}weighted continuously toward the most recent, plus a trend correction`);
+  else if (basis.n_sales) bits.push(`${basis.half_life_days ? "recency-weighted median" : "median"} of ${basis.n_sales} sales${basis.half_life_days ? ` (recent sales count most)` : ""}`);
   if (basis.last_sale_usd) bits.push(`last sale ${usd(basis.last_sale_usd)}${basis.last_sale_date ? ` on ${basis.last_sale_date}` : ""}`);
   const adj = typeof basis.market_adj_pct === "number" ? basis.market_adj_pct : typeof basis.market_adj_pct_30d === "number" ? (basis.market_adj_pct_30d as number) : null;
   if (adj) bits.push(`market trend ${adj > 0 ? "+" : ""}${adj}%`);
   if (typeof basis.trading_days_last_90 === "number") bits.push(`traded on ${basis.trading_days_last_90} of the last 90 days`);
   if (!bits.length && basis.method) bits.push(basis.method);
   return <p className="fine basis">{bits.join(" · ")}</p>;
+}
+
+/** Small chart of APR by loan size from the model, with the current choice marked. */
+export function AprCurve({ terms, loanUsd }: { terms: LoanTerms; loanUsd: number }) {
+  const pts = (terms.aprCurve ?? []).filter((p) => p.ltv <= terms.maxAdvance + 1e-9);
+  if (pts.length < 2) return null;
+  const W = 320, H = 90, P = 6;
+  const maxX = terms.maxLoanUsd, maxY = Math.max(...pts.map((p) => p.aprPct)) * 1.1, minY = 0;
+  const x = (usdv: number) => P + (usdv / maxX) * (W - 2 * P);
+  const y = (a: number) => H - P - ((a - minY) / (maxY - minY)) * (H - 2 * P);
+  const line = pts.map((p) => `${x(p.ltv * terms.suggestedPriceUsd).toFixed(1)},${y(p.aprPct).toFixed(1)}`).join(" ");
+  const cur = aprAt(terms, loanUsd);
+  return (
+    <figure className="apr-curve">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="APR by loan size">
+        <polyline points={line} className="curve" />
+        <line x1={x(terms.suggestedLoanUsd)} x2={x(terms.suggestedLoanUsd)} y1={P} y2={H - P} className="sugg" />
+        <circle cx={x(Math.min(loanUsd, maxX))} cy={y(cur)} r={4.5} className="dot" />
+        <text x={P} y={H - 1} className="ax">$0</text>
+        <text x={W - P} y={H - 1} className="ax" textAnchor="end">{usd(maxX)}</text>
+        <text x={P} y={12} className="ax">{Math.round(maxY / 1.1)}% APR</text>
+      </svg>
+      <figcaption className="fine">Rate by loan size. Dashed line: suggested loan. Borrow less, pay a lower rate.</figcaption>
+    </figure>
+  );
 }
 
 const STATUS: Record<LoanStatus, string> = {

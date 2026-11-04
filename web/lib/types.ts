@@ -12,6 +12,8 @@ export interface FactorScores {
   concentration?: number;
 }
 
+export interface AprPoint { ltv: number; loanUsd: number; aprPct: number; defaultProb90d?: number }
+
 /** How the suggested price was worked out, shown to borrowers and lenders. All optional. */
 export interface PriceBasis {
   method?: string;
@@ -36,8 +38,10 @@ export interface ScoreResult {
   suggestedPriceUsd: number;
   priceBasis?: PriceBasis;
   /** Optional model outputs. When missing, the TermsPolicy fills them in. */
-  aprPct?: number;
-  maxLoanUsd?: number;
+  aprPct?: number; // APR at the suggested loan
+  suggestedLoanUsd?: number; // model's suggested (negotiable) loan size
+  maxLendableLtv?: number; // hard cap on loan / suggested price
+  aprCurve?: AprPoint[]; // rate by loan size, for negotiating along the curve
   defaultProb90d?: number;
   asOf: string;
   source: string; // e.g. "standin-v2", "ml-v2"
@@ -57,9 +61,11 @@ export interface CatalogCard {
 
 export interface LoanTerms {
   suggestedPriceUsd: number;
-  maxLoanUsd: number; // borrower can take anything up to this
+  suggestedLoanUsd: number; // where the slider starts; borrower can go up or down
+  maxLoanUsd: number; // hard cap
   maxAdvance: number; // maxLoanUsd / suggestedPriceUsd
-  aprPct: number; // set by the score only
+  aprPct: number; // APR at the suggested loan
+  aprCurve?: AprPoint[]; // APR by loan size, when the model provides it
   aprSource: "model" | "policy";
   termOptionsSec: number[];
   minInterestPct: number; // minimum finance charge, % of principal
