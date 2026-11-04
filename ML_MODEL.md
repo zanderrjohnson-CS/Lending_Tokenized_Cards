@@ -1,155 +1,212 @@
-# ML safety score v0.2: suggested price, safety score, interest rate
+# ML safety score v0.3: every piece learned from data
 
-Updated 2026-11-02 to Zander's design: price and safety are separate. Code in `src/`, results in
-`output/ml/`, website feed in `output/ml/web_cards.json`.
+Updated 2026-11-03 per Zander: no fixed weights, splits, caps or advance rates. The pipeline is now
+five separate ML programs, each fitted to 2.7 years of daily TCGplayer prices (tcgcsv archives,
+2024-02-08 to 2026-11-01, 6,705 ungraded cards worth $20+ today) and each tested walk-forward (trained
+only on data from before the period it's tested on). Code in `src/`, results in `output/ml/`, website
+feed in `output/ml/web_cards.json`.
 
-## How a loan is priced, in one picture
+## What changed, in one picture
 
-| Piece | What it answers | How it's set |
-|---|---|---|
-| **Suggested price** | What is the card worth today? | Recency-weighted median of recent trade prices, adjusted for the overall market |
-| **Loan amount** | How much can I borrow? | 90% of the suggested price, for every card |
-| **Safety score (0-100)** | How safe is this card to lend against? | 50% how often it trades, 50% how stable its price is predicted to be (ML) |
-| **Interest rate** | What does it cost? | Set by the score only, high enough to cover the lender's expected default loss |
-
-So a $15 card that trades daily at a steady price gets a ~$13.50 loan at a low rate. A $1,000 card
-that rarely trades still gets a ~$900 loan, but at a much higher rate.
-
-## Data
-
-- tcgcsv.com daily archives of TCGplayer prices, 2024-02-08 to 2026-11-01 (998 days, all 220
-  Pokémon sets, 33,058 products). Raw/ungraded cards only.
-- Universe: single cards with a market price of $20 or more. **No trading requirement**: all 6,702
-  such cards are scored today.
-- Training examples: one per card printing every 14 days, about 187,000 with a known 90-day outcome.
-
-## Suggested price
-
-Recency-weighted median of the card's TCGplayer market price on days it actually traded (the price
-moved) over the last 180 days. Weights halve every 14 days, so last week dominates and 3-month-old
-prices barely count. Every old price is first rolled forward by the market-wide index: a $5 sale
-when the whole market was 20% lower counts as $6 today.
-
-Market index: average daily price change across all $20+ cards (each day's moves capped at ±15%).
-It roughly doubled from Feb 2024 to Nov 2026.
-
-Note: when a card is sliding, the suggested price lags above the latest price (151 Charizard ex:
-$317 suggested vs $300 market). The rate calibration below uses the suggested price, so that lag is
-priced in, but a lender-friendly cap such as "never above 105% of the latest price" would be easy to
-add.
-
-## Safety score
-
-**Liquidity (50%)**: days in the last 90 that the card's price moved (a sales proxy), log-scaled.
-60 or more days = 100. A card that never trades = 0.
-
-**Stability (50%)**: from the ML model's bad-case (1-in-10) prediction of the card's worst price drop
-over the next 90 days. 0% drop = 100, a 50% or worse drop = 0. The model also uses trading frequency
-as an input, and it's the model's single most important input.
-
-### The ML model
-
-Gradient-boosted trees (LightGBM) predicting each card's worst drop over the next 90 days, from:
-price level; returns over 7, 30, 90 and 180 days; volatility and downside volatility; past drawdowns;
-trading days; listing spreads; market-wide returns; set age; rarity; printing.
-
-Tested walk-forward: each quarter from 2025 Q2 to 2026 Q3 was predicted by a model trained only on
-earlier data whose outcome was already known.
-
-| Method | AUC for "fell more than 30%" | "Fell >30%", safest fifth | riskiest fifth |
+| Piece | v0.2 (fixed rules) | v0.3 (learned) | Program |
 |---|---|---|---|
-| **ML model (bad-case)** | **0.86** | **0.2%** | **14.0%** |
-| Old hand-weighted formula | 0.64 | 3.5% | 7.1% |
-| Volatility alone | 0.53 | 6.0% | 6.8% |
+| **Market index** | Average daily % change of all cards, moves capped at ±15% | Repeat-sales index (Case-Shiller method), noise model and smoothness learned, one index per era | `market_index.py` |
+| **Suggested price** | Weighted median, weight halves every 14 days, 180-day cut-off | Continuous recency weight `(1 + age/τ)^-κ`, memory length τ set per card, plus a learned trend correction | `price_model.py` |
+| **Stability** | Gradient-boosted bad-case 90-day drop | Same model, retrained, now also sees the card's own era index | `train_drawdown_model.py` |
+| **Safety score** | 50% liquidity + 50% stability, hand-set scales | Both inputs as percentiles vs. all other cards that day; combined by a model trained on what lenders actually lost | `safety_score_model.py` |
+| **Loan amount** | 90% of suggested price, every card | Per card, from a learned distribution of outcomes: what the card covers in a 1-in-10 bad case after selling it | `loan_terms_model.py` |
+| **Interest rate** | Looked up from a score-bucket table, smoothed | Solved per card and per loan size from the same distribution. No cap. Comes with a full rate-by-loan-size curve to negotiate on | `loan_terms_model.py` |
 
-The model beat the old formula in every test quarter (0.81 to 0.85 vs 0.51 to 0.77).
+## 1. Market index (`market_index.py`)
 
-## Interest rate
+**How v0.2 did it:** each day, average the % price change of every $20+ card, cap each card's move at
+±15%, chain the days together. Most cards don't sell on a given day, so their "0% change" pulled the
+average toward zero and made the index lag; the cap and the equal weights were fixed choices.
 
-The rate is calibrated on what actually happened, out of sample, to loans we would have made on
-cards with similar scores. The loss rules come from collateral lending (pawn, art, margin, auto):
+**v0.3:** every time a card trades, compare the price with its previous trade (892,016 such pairs
+from 9,589 cards). Find the daily index path that best explains all pairs at once:
+`log(price now / price then) = index[now] - index[then] + noise`.
 
-- At maturity, the borrower walks away if the card is worth less than what they owe. Another 5% of
-  borrowers fail to pay even when the card is worth more.
-- On default the lender sells the card for its value minus 10% fees, minus an extra fire-sale
-  discount of up to 20% for a card that rarely trades (0% for a card that trades daily).
-- Lender loss = what's owed minus what the sale brings in, if positive.
-- **APR = 8% cost of funds + 4% servicing (vault, insurance, authentication) + 2 × expected loss,
-  annualised.** The risk part is collected as an upfront fee, like pawn fees or hard-money "points".
-  If it were added to the balance due, it would push more borrowers underwater, raise losses, raise
-  the rate again, and spiral. At a 90% advance, many cards then have no rate that works.
+- Days with no trade add nothing, so nothing drags the index toward zero.
+- Noise is learned: a pair 60 days apart is noisier than one 2 days apart (variance = a + b × days,
+  fitted from the residuals). A single odd sale is down-weighted by a robust (Huber) loss instead of a
+  hard cap (8% of pairs get down-weighted).
+- Smoothness is learned: a penalty on day-to-day changes in the index's trend, its strength picked
+  by 5-fold cross-validation over cards (how well the index predicts price moves of cards it never
+  saw). The CV curve has a clear minimum (λ ≈ 3×10⁵, `output/ml/market_index_model.json`).
+- Four indexes: whole market, vintage (sets before 2004), 2004-2019, and 2020+. They really do move
+  differently over the 2.7 years: whole market +112%, vintage +112%, 2004-19 +141%, 2020+ +82%.
+  The price model picks the era index because it predicts better.
 
-Result (`output/ml/rate_by_score.csv`, smoothed so a higher score never costs more):
+## 2. Suggested price (`price_model.py`)
 
-| Score | APR | Chance of default per 90-day loan |
-|---|---|---|
-| 95-100 | 25% | 14% |
-| 80-95 | 28% | 14% |
-| 75-80 | 32% | 15% |
-| 60-75 | 37% | 15% |
-| 50-60 | 43-46% | 15% |
-| 40-50 | 50-56% | 16-17% |
-| 30-40 | 58-77% | 17-21% |
-| 0-30 | 80-208% | 22-47% |
+Every past traded price (up to a year back) is rolled forward to today by the card's era index
+(scaled by a learned market sensitivity β = 0.42) and given a weight that falls **continuously** with
+age:
 
-**Why even safe cards cost ~25% at a 90% loan:** with 10% selling fees, a 90% loan has almost no
-cushion, so ordinary price noise puts about 1 in 7 loans underwater. The score separates the risky
-end well (below 60), but above 60 the size of the loan matters more than the score. The advance rate
-is the lever (rates by score band, before smoothing, `output/ml/apr_by_advance_rate.csv`):
+```
+recency weight(age) = (1 + age / τ_card) ^ -κ          κ = 4.2 (learned)
+log τ_card = a0 + a1 · (how often the card trades) + a2 · (volatility)   (all learned)
+```
 
-| Advance rate | APR, score 80-100 | score 60-80 | score 40-60 | score 0-40 |
+No steps, no window edge, no blend of fixed medians: weight is highest for today's price and smoothly
+lower for every older one.
+
+The data then added something we didn't expect: **TCGplayer's "market price" lags real sales** (it's
+already their own rolling average), so in a moving market the latest quote is still behind. The model
+learns a trend correction: it compares the short-memory average with a long-memory one (memory 50×
+longer) and pushes the price γ of the way further in the direction of that gap. γ is learned per card
+(0.6 for cards that trade daily, 1.2 for rarely traded cards).
+
+**What it learned:** memory is short. For a typical card τ ≈ 0.8 days, i.e. the weight halves within
+hours, and most of the information is in the latest price plus the recent trend. The data says older
+prices should count far less than the 14-day half-life we had.
+
+**Tested** on Aug 2025 - Oct 2026 (trained before), error vs. what the card actually traded at over the
+next 30 days (median absolute log error, lower is better):
+
+| Method | All cards | Rarely traded (<10 days/90) | 10-40 days | 40+ days |
 |---|---|---|---|---|
-| 70% | 13% | 16% | 22% | 52% |
-| 80% | 17% | 21% | 31% | 72% |
-| 90% | 28% | 36% | 47% | 97% |
+| **v0.3 learned** | **5.6%** | **9.5%** | **3.1%** | **4.9%** |
+| Today's TCGplayer market price | 5.9% | 9.7% | 3.3% | 5.1% |
+| v0.2 (14-day half-life median) | 7.0% | 9.9% | 4.4% | 7.9% |
+
+v0.3 cuts pricing error by about a fifth vs. v0.2, and beats just taking today's quote in every group.
+
+## 3. Stability (`train_drawdown_model.py`)
+
+Unchanged method (LightGBM predicting the worst price drop over the next 90 days; the 1-in-10 bad case
+is the stability input), retrained on the new panel with the era index as extra inputs.
+Walk-forward AUC for "fell more than 30%": **0.86**; 0.2% of the safest fifth vs 14.1% of the riskiest
+fifth fell that far.
+
+## 4. Safety score (`safety_score_model.py`)
+
+- **Normalised against other cards, every day:** liquidity = percentile of how many of the last 90
+  days the card traded, among all $20+ cards that day; stability = percentile of its predicted
+  bad-case drop (less drop = higher). "Liquidity 80" = trades more often than 80% of cards today.
+- **Combined by a model, not a 50/50 split.** A monotone gradient-boosted model (more liquid or more
+  stable can never lower the score) predicts the **collateral shortfall** a lender actually suffered:
+  `max(0, 1 - realised sale value / suggested price)`, where realised sale value is the first real
+  trade at or after a 90-day loan's maturity, discounted for the wait. A card nobody buys shows up as a
+  long wait and a worse price.
+- **Score = share of historical card-days with a worse predicted shortfall.** 90 = safer collateral
+  than 90% of what we've seen.
+
+**What it learned:** stability carries almost all of the signal (linear-equivalent weights: 94%
+stability, 6% liquidity; by tree gain 99/1). That's because the stability model already uses trading
+frequency as its #1 input, so liquidity is mostly already inside stability. Liquidity still bites at
+the bottom: a card with top-10% stability scores 91 if it trades like a median card but only 66 if it
+is in the least-traded 10%.
+
+Walk-forward test (Q4 2025 - Q2 2026, 73,974 card-loans):
+
+| Score | Rank correlation with shortfall | AUC, shortfall > 30% | Shortfall > 30%, safest fifth | riskiest fifth |
+|---|---|---|---|---|
+| **v0.3 learned** | **0.28** | **0.84** | **0.08%** | 9.4% |
+| v0.2 50/50 | 0.16 | 0.82 | 0.20% | 9.1% |
+
+Note the score is now relative: the median card scores about 50. Our 10 starter cards score 13-43 today
+because hyped high-value cards have larger predicted drops than the average $20+ card.
+
+## 5. Loan amount and interest rate (`loan_terms_model.py`)
+
+1. **Learn each card's spread of outcomes.** Two distributional models (median + spread + the actual
+   shape of past errors) predict, per $ of suggested price: V = value at maturity (what the borrower
+   compares the debt with) and R = what a lender would actually get selling it after a default (first
+   real trade after maturity, discounted for the wait). Inputs: liquidity and stability percentiles,
+   score, volatility, recent returns, price level, distance from market price, market and era momentum,
+   set age, rarity. The 2024-26 bull market is taken out of the training targets, and a de-trended
+   historical 90-day market move is added back as risk: **we don't assume the market keeps rising**.
+2. **Price any loan size.** For an advance L (loan ÷ suggested price), solve for the lowest APR at which
+   the lender's expected repayment covers cost of funds (8%) + servicing (4%) + a 1× expected-loss
+   capital buffer. Borrowers walk away when the card is worth less than the debt; 5% of others default
+   anyway. **There is no rate cap.** The rate rises smoothly with risk, and past some advance no rate
+   works (a higher rate only pushes more borrowers underwater); that's the card's maximum lendable
+   advance.
+3. **Suggested loan** = what the card covers at maturity in a 1-in-10 bad case after 10% selling fees,
+   net of interest; **suggested APR** = break-even at that size. Both continuous in every input.
+4. **Negotiation curve.** Every card gets APR at each loan size from 20% of the suggested price up to its
+   maximum lendable advance (`negotiation.apr_curve` in the feed). A borrower who wants more cash moves
+   right and pays more; a lender who wants a lower rate offers less. The suggestion is a starting point.
+
+Small, safe loans bottom out at 12% (the cost of funds plus servicing, i.e. zero expected loss); that
+floor is an assumption about our funding, not a cap.
+
+**Walk-forward backtest** (loans priced by a model that only knew earlier outcomes, then scored on what
+really happened; 12,000 loans, Q4 2025 - Q2 2026):
+
+| Score fifth | Median loan (% of price) | Median APR | Predicted default | Actual default | Lender's actual return (hurdle 12%) |
+|---|---|---|---|---|---|
+| 0-20 | 58% | 18.0% | 8.5% | 9.0% | 13.3% |
+| 20-40 | 66% | 15.9% | 7.7% | 6.2% | 14.9% |
+| 40-60 | 71% | 15.3% | 7.5% | 5.8% | 14.8% |
+| 60-80 | 74% | 14.9% | 7.3% | 5.3% | 15.0% |
+| 80-100 | 79% | 14.3% | 7.1% | 5.4% | 14.2% |
+
+The lender clears its 12% hurdle in every band, with no band subsidising another: riskier cards get
+smaller loans and higher rates, safer cards bigger loans and lower rates. Compared with v0.2 (90%
+loans at 25-200% APR), loans are smaller and much cheaper.
 
 ## Starter cards today (2026-11-01, raw)
 
-| Card | Suggested price | Trading days /90 | Liquidity | Stability | Score | Loan | APR |
-|---|---|---|---|---|---|---|---|
-| Charizard ex 199 (151) | $317 | 86 | 100 | 82 | 90.8 | $286 | 27.7% |
-| Charizard ex 223 (Obsidian Flames) | $93 | 86 | 100 | 73 | 86.4 | $84 | 27.7% |
-| Lugia V alt art | $478 | 44 | 93 | 75 | 83.7 | $431 | 27.7% |
-| Giratina V alt art | $860 | 33 | 86 | 79 | 82.2 | $774 | 28.0% |
-| Base Set Blastoise | $231 | 34 | 87 | 71 | 78.6 | $207 | 30.7% |
-| Base Set Venusaur | $157 | 40 | 90 | 67 | 78.4 | $141 | 30.9% |
-| Gengar VMAX alt art | $1,040 | 27 | 81 | 73 | 76.9 | $936 | 32.2% |
-| Pikachu with Grey Felt Hat | $997 | 24 | 78 | 73 | 75.7 | $898 | 33.6% |
-| Umbreon VMAX alt art | $2,314 | 38 | 89 | 54 | 71.5 | $2,082 | 37.3% |
-| Base Set Charizard | $987 | 18 | 72 | 49 | 60.3 | $888 | 39.8% |
+| Card | Market | Suggested | Liquidity | Stability | Score | Loan | APR | Max lendable |
+|---|---|---|---|---|---|---|---|---|
+| Gengar VMAX alt art | $1,026 | $1,009 | 86 | 41 | 43 | $711 (71%) | 14.4% | 75% |
+| Base Set Blastoise | $230 | $229 | 88 | 38 | 41 | $153 (67%) | 16.4% | 75% |
+| Charizard ex 199 (151) | $300 | $295 | 99 | 38 | 41 | $267 (91%) | 14.4% | 100% |
+| Giratina V alt art | $822 | $812 | 88 | 36 | 37 | $590 (73%) | 16.0% | 80% |
+| Charizard ex 223 (OBF) | $86 | $85 | 99 | 27 | 30 | $73 (86%) | 14.3% | 95% |
+| Pikachu with Grey Felt Hat | $987 | $963 | 84 | 27 | 30 | $675 (70%) | 15.3% | 75% |
+| Lugia V alt art | $460 | $444 | 91 | 22 | 24 | $313 (70%) | 16.4% | 75% |
+| Base Set Venusaur | $143 | $133 | 90 | 21 | 24 | $86 (65%) | 18.7% | 70% |
+| Base Set Charizard | $987 | $1,000 | 77 | 15 | 16 | $633 (63%) | 16.0% | 70% |
+| Umbreon VMAX alt art | $2,210 | $2,307 | 89 | 13 | 13 | $1,419 (62%) | 17.4% | 70% |
 
-Across all 6,702 cards: median score 68.5, median APR 37%, 10% of cards at or below 28%, 10% at
-67% or more.
+Across all 6,705 cards: median suggested loan 71% of price, median APR 17.5%, 10% of cards at or below
+13.7% and 10% at 22.3% or more.
 
 ## Website feed
 
-`output/ml/web_cards.json`: our 10 starter cards (by `card_key` from `data/cards.csv`) plus the 490
-most-traded others. `web_cards_all.json` has all 6,702. Each card carries `score`, `factors`
-(liquidity, stability), `suggested_price_usd`, `price_basis`, `max_loan_usd`, `apr_pct`,
-`default_prob_90d`. The top level carries the rules and the score-to-APR table, so the site can price
-any score.
+`output/ml/web_cards.json` (10 starters + 490 most-traded) and `web_cards_all.json` (all 6,705). Every
+v0.2 field is still there with the same meaning (`score`, `factors.liquidity`/`stability` (now
+percentiles), `suggested_price_usd`, `price_basis`, `max_loan_usd` (now the suggested, negotiable
+loan), `apr_pct`, `default_prob_90d`). New: `suggested_ltv`, `max_lendable_ltv`,
+`negotiation.apr_curve` (`ltv`, `loan_usd`, `apr_pct`, `default_prob_90d` per step),
+`price_basis.recency_weight` and `trend_correction`. The top level drops the fixed `advance_rate` and
+the `apr_by_score` table.
 
 ## Caveats
 
-- **Stand-in outcome, not real defaults.** Borrower behaviour is modelled with simple rules. Replace
-  them with real repayment data once loans exist.
-- **One market regime**: 2024-26 was a strong rising market with pullbacks in hyped modern cards.
-  There was no full crash in the data, so tail losses are probably understated.
-- **Raw cards, TCGplayer only.** No graded slabs or eBay or auction sales yet. Per-grade pricing
-  needs the PriceCharting API or similar. Some cards trade far more often elsewhere than on TCGplayer.
-- **"Trading days" is a proxy**: days the TCGplayer market price changed, not a sale count.
-- Fees, cost of funds, the 5% base default rate and the 20% maximum fire-sale discount are
-  assumptions. They live at the top of `src/price_and_rate.py`.
+- **Stand-in outcomes, not real loans.** Defaults are simulated (walk away when underwater, 5% base
+  rate). Cost of funds, servicing, 10% selling fees, 1× capital buffer and the 1-in-10 confidence level
+  are assumptions, at the top of `src/loan_terms_model.py`. Replace with real repayment data once loans
+  exist.
+- **TCGplayer "market price" is not a sale.** "Trading days" are days that price moved, and the price
+  targets are that same series. Real sold listings (the data-expansion thread is collecting them)
+  would sharpen every model, the price model most.
+- **One market regime.** 2024-26 rose strongly with no full crash. We remove the drift, but tail
+  losses are probably still understated.
+- **Short test windows.** The score and loan models need 150 days of future data per example, so their
+  walk-forward tests cover three quarters.
+- The trend correction makes the price respond faster to momentum, including hype. The loan model
+  prices that risk (it learns how often a fast riser falls back), but a lender could still cap the
+  suggested price at e.g. the latest quote.
 
 ## Re-running
 
 ```bash
-apt install 7zip; pip install pandas py7zr lightgbm scikit-learn scipy
-python src/backfill_tcgcsv.py WORK                 # ~15 min, ~240 MB, resumes where it left off
-python src/build_panel.py WORK                     # features, labels, suggested prices
-python src/train_drawdown_model.py WORK output/ml  # walk-forward test + final models
-python src/price_and_rate.py WORK output/ml        # rates, today's scores, web_cards.json
+apt install p7zip-full; pip install pandas py7zr lightgbm scikit-learn scipy
+python src/backfill_tcgcsv.py WORK                    # ~15 min, ~240 MB, resumes where it left off
+python src/market_index.py WORK output/ml             # 1. market index (~1 min)
+python src/price_model.py WORK output/ml              # 2. suggested price (~20 min)
+python src/build_panel.py WORK output/ml              #    features + labels for every card, every 14 days
+python src/train_drawdown_model.py WORK output/ml     # 3. stability
+python src/safety_score_model.py WORK output/ml       # 4. safety score
+python src/loan_terms_model.py WORK output/ml         # 5. loan size + APR
+python src/export_web.py WORK output/ml               # today's scores + web_cards.json
 ```
 
-`data/processed/` holds `panel.pkl.gz` and `market_index.csv`, so the last two steps can run without
-re-downloading (use `data/processed` as WORK).
+`data/processed/` holds `panel.pkl.gz`, `market_index.csv` and `card_era.csv`, so steps 3-5 and the
+export can run without re-downloading (use `data/processed` as WORK; the export also needs `wide.pkl`
+from step 1's download).
