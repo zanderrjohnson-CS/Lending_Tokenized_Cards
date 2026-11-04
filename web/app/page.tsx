@@ -32,7 +32,7 @@ export default function Home() {
         </div>
         <ol className="how">
           <li><b>1</b><div><h4>Sign in with your wallet</h4><p>No password. You sign a message to prove the address is yours.</p></div></li>
-          <li><b>2</b><div><h4>Borrower: pledge a card</h4><p>We suggest a price from recent sales. You can borrow up to 90% of it, at a rate set by the card&apos;s safety score.</p></div></li>
+          <li><b>2</b><div><h4>Borrower: pledge a card</h4><p>We suggest a price from recent sales and a loan size with its rate. Borrow less for a lower rate, or more for a higher one.</p></div></li>
           <li><b>3</b><div><h4>Lender: pick a loan</h4><p>Browse by card, score, rate and term, then fund it.</p></div></li>
           <li><b>4</b><div><h4>Escrow runs the terms</h4><p>Repay and the card comes back in the same transaction. Miss the due date and the lender can claim it.</p></div></li>
         </ol>
@@ -62,7 +62,7 @@ export default function Home() {
       <section>
         <div className="section-head">
           <h2>Today&apos;s card scores</h2>
-          <span className="muted">Raw (ungraded) cards. Price sets how much you can borrow; score sets the rate.</span>
+          <span className="muted">Raw (ungraded) cards. Price sets the loan size; how safely the card resells sets the rate.</span>
         </div>
         <div className="scoreboard">
           {catalog.filter((c) => STARTER.has(c.cardKey)).sort((a, b) => b.score.score - a.score.score).map((c) => (
@@ -72,8 +72,7 @@ export default function Home() {
               <ScoreRing score={c.score.score} size={48} />
               <div className="sb-terms">
                 <span>suggested price <b>{usd(c.terms.suggestedPriceUsd)}</b></span>
-                <span>borrow up to <b>{usd(c.terms.maxLoanUsd)}</b></span>
-                <span><b>{c.terms.aprPct}%</b> APR</span>
+                <span>suggested loan <b>{usd(c.terms.suggestedLoanUsd)}</b> at <b>{c.terms.aprPct}%</b></span>
               </div>
             </div>
           ))}

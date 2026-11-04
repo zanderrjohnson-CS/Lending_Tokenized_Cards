@@ -43,8 +43,9 @@ async function signSend(kp: Keypair, b64: string) {
   r = await asB("/api/cards/confirm", { mint, signature: sig });
   check("server verifies 1-of-1 token on-chain", r.status === 200 && r.json.status === "minted", r.json);
   r = await asB("/api/cards");
-  check("card shows with suggested price, max loan ~90% of it, APR from score",
-    r.json.length === 1 && Math.abs(r.json[0].terms.maxLoanUsd / r.json[0].score.suggestedPriceUsd - 0.9) < 0.01 && r.json[0].terms.aprPct > 8, r.json);
+  const t0 = r.json[0]?.terms;
+  check("card shows suggested price, suggested loan <= cap, APR > 0",
+    r.json.length === 1 && t0.suggestedLoanUsd > 0 && t0.suggestedLoanUsd <= t0.maxLoanUsd && t0.aprPct > 0, r.json);
   const maxLam = Math.floor((r.json[0].terms.maxLoanUsd / 150) * 1e9);
 
   // over-borrow is rejected server-side
@@ -55,6 +56,7 @@ async function signSend(kp: Keypair, b64: string) {
 
   r = await asB("/api/loans", { mint, principalLamports: Math.floor(maxLam / 2), termSec: 300 });
   check("loan created, deposit tx returned", r.status === 200 && r.json.loan.status === "pending_deposit", r.json);
+  check("APR at half the max is at most the APR at the suggested loan (curve)", r.json.loan.aprPct <= t0.aprPct + 1e-9, { loanApr: r.json.loan.aprPct, suggestedApr: t0.aprPct });
   const id = r.json.loan.id, repayLam = r.json.loan.repayLamports, principal = r.json.loan.principalLamports;
   r = await asB(`/api/loans/${id}`, { action: "deposit", phase: "confirm", signature: "fake" });
   check("deposit confirm refused before the tx lands", r.status === 409, r.json);

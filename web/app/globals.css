@@ -183,3 +183,13 @@ label.inline { display: flex; gap: 8px; align-items: center; margin: 0; white-sp
   .top { gap: 10px; padding: 10px 16px; flex-wrap: wrap; } .bal, .net { display: none; }
   .loan { flex-wrap: wrap; } .loan-actions { width: 100%; flex-direction: row; }
 }
+
+.apr-live { color: var(--accent); }
+.linkish { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 13px; }
+.apr-curve { margin: 10px 0 4px; background: var(--panel2); border-radius: 10px; padding: 8px 10px; }
+.apr-curve svg { width: 100%; height: auto; display: block; }
+.apr-curve .curve { fill: none; stroke: #3ad7ff; stroke-width: 2; }
+.apr-curve .sugg { stroke: var(--muted); stroke-dasharray: 4 4; }
+.apr-curve .dot { fill: var(--accent); }
+.apr-curve figcaption { margin-top: 4px; }
+.apr-curve .ax { fill: var(--muted); font-size: 9px; }

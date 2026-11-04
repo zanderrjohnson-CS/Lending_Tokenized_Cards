@@ -8,18 +8,18 @@ loan terms, and let an escrow hold the card token until the loan is repaid or de
 - **Suggested price** (shown to both sides): what the card should sell for now. Recent sales count most, adjusted
   for the overall market trend. A card that sold for $5 three months ago and $15 last week, in a rising market, is
   priced close to $15.
-- **Loan size** comes from the price: borrow up to **90% of the suggested price**, for every card. No tiers, no
-  minimum-trading cutoff.
-- **Safety score** (0 to 100, trading frequency weighted heavily) sets **only the interest rate**. The question it
-  answers: if the borrower defaults, can the lender sell the card quickly for at least the loan amount? Card trades
-  often at a steady price → high score → low rate. Valuable but rarely traded → still a big loan, but a high rate to
-  cover the lender's default risk. Stand-in curve until the model supplies `apr_pct`: APR = 8% + 0.012 × (100 − score)²,
-  so 90 → 9.2%, 75 → 15.5%, 50 → 38%, 25 → 75.5%.
-- Example: suggested price $15, score 88 → borrow up to $13.50 at 9.7%.
+- **Loan size** comes from the price. The model suggests a loan per card (median about 71% of price) and an **APR
+  curve by loan size**: borrow less and the rate drops, borrow more (up to the card's max lendable share) and it rises.
+  The borrower picks a point on that curve in the quote screen; that is the negotiation. No tiers, no trading cutoff.
+- **Safety score** (0 to 100, relative to all cards, typical card about 50) answers: if the borrower defaults, can the
+  lender sell the card for at least the loan amount? It drives the rate and the suggested loan size.
+- Example (151 Charizard ex): suggested price $295, suggested loan $267 at 14.4%; borrow $177 instead and it's 12%.
 
-**Live now:** `data/web_cards.json` from the ML model (`drawdown-gbm-v0.2`, 500 cards incl. our 10 starters; copy of
-`../output/ml/web_cards.json`). Its APRs run from about 25% for the safest cards to 200% for the riskiest, and the
-risk part is meant to be charged as an upfront fee (see ML_MODEL.md); the site shows the all-in APR as simple interest.
+**Live now:** `data/web_cards.json` from the ML model (`dynamic-v0.3`, 500 cards incl. our 10 starters; copy of
+`../output/ml/web_cards.json`). APRs are per card (median about 17.5%) with no cap. The risk part is meant to be charged
+as an upfront fee (see ML_MODEL.md); the site shows the all-in APR as simple interest.
+
+If the model file lacks a curve (stand-in data): loan up to 90% of price, APR = 8% + 0.012 × (100 − score)².
 Search in "Tokenize a card" reaches every card in the file. To refresh, copy the newer file over it.
 
 Fallback if that file is missing: the stand-in suggested price is built by `scripts/build-prices.ts` from the
@@ -44,8 +44,8 @@ use two wallet accounts (or two browsers): one borrows, one lends.
 3. **Borrower**
    - *Tokenize a card*: pick the card and grade (Raw or PSA 10 + cert number). The vault issues a 1-of-1 token to your wallet
      (supply 1, decimals 0, mint authority burned in the same transaction).
-   - *Get a loan quote*: suggested price and how it was worked out, the safety score and its breakdown, then "borrow up
-     to" (90% of price) and the APR from the score. Slide the amount, pick a term from 7 to 90 days (plus a 5-minute demo
+   - *Get a loan quote*: suggested price and how it was worked out, the safety score and its breakdown, the suggested
+     loan and its APR, and a rate-by-size chart; the APR updates live as you slide the amount. Slide the amount, pick a term from 7 to 90 days (plus a 5-minute demo
      term so a default can be shown live).
    - *List loan and deposit card*: one wallet approval moves the token into escrow; the loan appears to lenders.
    - *Repay*: one transaction pays the lender principal + interest **and** returns the token. *Cancel* any time before funding.
@@ -119,7 +119,7 @@ external security review.
 | `lib/score/mlFileProvider.ts` | Reads the ML output file `data/web_cards.json` (or `ML_CARDS_FILE`). Used automatically when the file exists |
 | `lib/score/factorsProvider.ts` | Stand-in: `data/factors.json` score + `data/prices.json` suggested price |
 | `lib/score/httpProvider.ts` | Set `SCORE_API_URL` to use an ML service instead (`GET /catalog`, `GET /score?card=&grade=`) |
-| `lib/terms.ts` | **`TermsPolicy`** `price-based-v2`: max loan = 90% of suggested price (or the model's `max_loan_usd`); APR from score (or the model's `apr_pct`); terms 7 to 90 days; minimum interest 1% |
+| `lib/terms.ts` | **`TermsPolicy`** `price-curve-v3`: suggested loan = model's `max_loan_usd`, cap = `max_lendable_ltv` × price, APR at any size interpolated from `negotiation.apr_curve` (server recomputes it at listing); stand-in fallback 90% / score formula; terms 7 to 90 days; minimum interest 1% |
 | `scripts/build-prices.ts` | Builds the stand-in `data/prices.json` |
 | `lib/server/txbuild.ts` | All transaction builders (mint, deposit, fund, repay, claim, cancel) |
 | `lib/server/chain.ts` | On-chain checks the server runs before each status change |
@@ -141,8 +141,9 @@ up on the next request. Format (sample in `scripts/fixtures/web_cards.sample.jso
   "price_basis": { "n_sales": 12, "half_life_days": 21, "last_sale_usd": 362, "last_sale_date": "2026-10-30", "market_adj_pct": 1.5 },
   "max_loan_usd": 315.0, "apr_pct": 48.0, "default_prob_90d": 0.12 } ] }
 ```
-Only `card_key`, `name`, `set`, `score` and `suggested_price_usd` are required. Missing `max_loan_usd` → 90% of price;
-missing `apr_pct` → the stand-in curve above.
+Optional v0.3 fields the site uses: `max_lendable_ltv` (cap) and `negotiation.apr_curve: [{ltv, loan_usd, apr_pct,
+default_prob_90d}]`. Only `card_key`, `name`, `set`, `score` and `suggested_price_usd` are required. Missing
+`max_loan_usd` → 90% of price; missing `apr_pct` and curve → the stand-in formula above.
 
 ## Tests
 
@@ -152,7 +153,7 @@ The cloud sandbox this was built in can't reach devnet, so everything was tested
 - `npm run test:escrow`: the real tx builders. Mint is 1-of-1, deposit, fund, atomic repay, underfunded repay leaves
   collateral in escrow, default claim, cancel, forged release without the escrow key fails. (10 checks)
 - `scripts/rpc-shim.ts` + `scripts/e2e-api.ts`: a small JSON-RPC server over LiteSVM, and the full API flow through it in
-  `repay`, `default` and `cancel` modes, including auth and permission checks, borrowing over 90% of price rejected, replayed signatures and
+  `repay`, `default` and `cancel` modes, including auth and permission checks, borrowing over the cap rejected, replayed signatures and
   the funding lock. (46 checks)
 - `scripts/ui-e2e.cjs`: Playwright drives the real UI with a mock Wallet Standard wallet against the shim: connect, sign
   in, pick role, tokenize, quote, list, fund from a second wallet, repay, loan page.

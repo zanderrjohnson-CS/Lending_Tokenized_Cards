@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { handle, ok, requireWallet, HttpError } from "@/lib/server/api";
 import { load, mutate } from "@/lib/server/db";
 import { getScoreProvider } from "@/lib/score";
-import { DEFAULT_POLICY, repayAmount } from "@/lib/terms";
+import { DEFAULT_POLICY, aprAt, defaultProbAt, repayAmount } from "@/lib/terms";
 import { escrowKeypair } from "@/lib/server/keys";
 import { blockhash, tokenBalance } from "@/lib/server/chain";
 import { buildDepositTx, toB64 } from "@/lib/server/txbuild";
@@ -48,15 +48,18 @@ export const POST = handle(async (req) => {
   const maxLamports = usdToLamports(terms.maxLoanUsd);
   const p = Math.floor(Number(principalLamports));
   if (!(p > 0) || p > maxLamports) throw new HttpError(400, `Principal must be between 0 and ${maxLamports} lamports`);
+  // The rate depends on how much of the price is borrowed (the model's curve), so compute it here.
+  const principalUsd = (p / 1e9) * SOL_USD;
+  const apr = aprAt(terms, principalUsd);
 
   const loan: Loan = {
     id: crypto.randomBytes(5).toString("hex"),
     mint, cardKey: card.cardKey, grade: card.grade, borrower: wallet, status: "pending_deposit",
     score: score.score, scoreSource: score.source, suggestedPriceUsd: score.suggestedPriceUsd,
-    priceBasis: score.priceBasis, defaultProb90d: score.defaultProb90d,
+    priceBasis: score.priceBasis, defaultProb90d: defaultProbAt(terms, principalUsd) ?? score.defaultProb90d,
     ltv: Math.round((p / usdToLamports(score.suggestedPriceUsd)) * 1000) / 1000,
-    aprPct: terms.aprPct, termSec: Number(termSec), principalLamports: p,
-    repayLamports: repayAmount(p, terms.aprPct, Number(termSec), terms.minInterestPct),
+    aprPct: apr, termSec: Number(termSec), principalLamports: p,
+    repayLamports: repayAmount(p, apr, Number(termSec), terms.minInterestPct),
     solUsd: SOL_USD, createdAt: new Date().toISOString(),
     events: [{ at: new Date().toISOString(), kind: "created", note: `Score ${score.score}, suggested price $${score.suggestedPriceUsd}, ${terms.policy}` }],
   };
