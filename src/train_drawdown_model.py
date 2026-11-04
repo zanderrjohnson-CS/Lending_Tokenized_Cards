@@ -1,4 +1,4 @@
-"""Train the stand-in-label model: predict each card's worst price drop over the next 90 days.
+"""ML program 3 of 5 (stability): the stand-in-label model: predict each card's worst price drop over the next 90 days.
 
 Walk-forward evaluation: for each test quarter, train only on as-of dates whose 90-day label
 window closed before the quarter starts (no peeking). Out-of-sample predictions from all quarters
@@ -21,7 +21,7 @@ from sklearn.metrics import roc_auc_score
 NUM = ["log_price", "ret_7", "ret_30", "ret_90", "ret_180", "vol_30", "vol_90", "vol_180",
        "downvol_30", "downvol_90", "downvol_180", "past_dd_90", "past_dd_180", "off_high_90",
        "off_high_180", "sale_days_30", "sale_days_90", "coverage_180", "low_to_market", "mid_to_market",
-       "spread_hl", "mkt_ret_30", "mkt_ret_90", "set_age_days", "vintage"]
+       "spread_hl", "mkt_ret_30", "mkt_ret_90", "seg_ret_30", "seg_ret_90", "set_age_days", "vintage"]
 CAT = ["rarity_group", "sub_type"]
 FEATURES = NUM + CAT
 TARGET = "fwd_dd_90"
@@ -117,9 +117,12 @@ def main():
     metrics["label_summary"] = oos[TARGET].describe(percentiles=[.5, .75, .9, .95]).to_dict()
     json.dump(metrics, open(os.path.join(out, "model_metrics.json"), "w"), indent=2, default=str)
     keep = ["sid", "asof", "name", "set_name", "sub_type", "rarity_group", "price", TARGET, "fwd_ret_90",
-            "pred", "pred_mean", "pred_q50", "pred_q90", "pred_formula", "test_quarter",
-            "sale_days_90", "suggested_price", "fwd_end_price", "ret_90"]
-    oos[keep].to_csv(os.path.join(out, "oos_predictions.csv.gz"), index=False)
+            "pred", "pred_mean", "pred_q50", "pred_q90", "pred_formula", "test_quarter", "sale_days_90",
+            "suggested_price", "fwd_end_price", "liq_price", "liq_wait_days", "liq_window_complete",
+            # inputs the loan-terms model also uses
+            "vol_90", "downvol_90", "ret_30", "ret_90", "log_price", "sp_to_market", "mkt_ret_90", "seg_ret_90",
+            "set_age_days"]
+    oos[keep].to_csv(os.path.join(out, "oos_predictions.csv.gz"), index=False, float_format="%.6g")
 
     # Final models on everything, for scoring today's cards.
     final = {"mean": fit(lab, "regression")}
