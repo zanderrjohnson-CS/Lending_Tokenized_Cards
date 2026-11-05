@@ -60,6 +60,13 @@
       "fetched": [],
       "note": "3rd straight day of 401 Unauthorized on the first call; token injection for api.psacard.com still broken/expired; needs a human",
       "stopped": "HTTP 401"
+    },
+    {
+      "calls": 1,
+      "date": "2026-11-05",
+      "fetched": [],
+      "note": "HTTP 429 on first call (after 3 days of 401): auth now passes but daily quota reports exhausted; quota appears consumed elsewhere; needs a human",
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
