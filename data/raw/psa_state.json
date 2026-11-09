@@ -88,6 +88,12 @@
       "fetched": [],
       "note": "4th straight day of HTTP 429 on first call (auth passes); daily quota reports exhausted, appears consumed elsewhere; needs a human",
       "stopped": "HTTP 429"
+    },
+    {
+      "calls": 1,
+      "date": "2026-11-09",
+      "fetched": [],
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
