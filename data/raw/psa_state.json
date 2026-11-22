@@ -175,6 +175,13 @@
       "date": "2026-11-21",
       "fetched": [],
       "stopped": "HTTP 429"
+    },
+    {
+      "calls": 1,
+      "date": "2026-11-22",
+      "fetched": [],
+      "note": "18th straight day of HTTP 429 on first call; quota appears consumed elsewhere or token issue; needs a human",
+      "stopped": "HTTP 429"
     }
   ],
   "specs": {}
